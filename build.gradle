@@ -7,7 +7,6 @@ buildscript {
     dependencies {
         classpath 'gradle.plugin.com.hierynomus.gradle.plugins:license-gradle-plugin:0.16.1'
         classpath 'gradle.plugin.com.github.jengelman.gradle.plugins:shadow:7.0.0'
-        classpath 'com.guardsquare:proguard-gradle:' + (JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_11) ? '7.2.0' : '7.1.0')
     }
 }
 
@@ -16,43 +15,25 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 // Apply plugin
 apply plugin: 'java'
 apply plugin: 'com.github.hierynomus.license'
-apply plugin: 'checkstyle'
 apply plugin: 'maven-publish'
 apply plugin: 'eclipse'
 apply plugin: 'idea'
 apply plugin: 'com.github.johnrengelman.shadow'
-apply plugin: 'potemkin-modules'
 
 // Default tasks
 defaultTasks 'licenseFormat', 'check', 'build'
 
 // Basic project information
-group = 'net.fabricmc'
-archivesBaseName = 'sponge-mixin'
+group = 'com.cleanroommc'
+archivesBaseName = 'cleanmix'
 version = buildVersion + "+mixin." + upstreamMixinVersion
 
-
-def ENV = System.getenv()
-if (!ENV.CI) {
-    version = version + "-local"
-}
-
-// Extended project information
-ext.projectName = 'Mixin'
-ext.inceptionYear = '2014'
-ext.packaging = 'jar'
-
 // Define variables
-ext.asmVersion = project.hasProperty("asmVersion") ? asmVersion : '9.0'
-ext.legacyForgeAsmVersion = project.hasProperty("legacyForgeAsmVersion") ? asmVersion : '5.0.3'
+ext.asmVersion = asmVersion
 
 // Minimum version of Java required
-sourceCompatibility = '1.8'
-targetCompatibility = '1.8'
-
-java {
-    modularity.inferModulePath = false
-}
+sourceCompatibility = JavaVersion.VERSION_17
+targetCompatibility = JavaVersion.VERSION_17
 
 // Project repositories
 repositories {
@@ -65,40 +46,18 @@ repositories {
         name = 'Fabric'
         url = 'https://maven.fabricmc.net/'
     }
-    maven {
-        // For modlauncher
-        name = 'forge'
-        url = 'https://files.minecraftforge.net/maven'
-    }
 }
 
 configurations {
     stagingJar
     
     exampleImplementation       .extendsFrom implementation
-    fernflowerImplementation    .extendsFrom implementation
     launchwrapperImplementation .extendsFrom implementation
     agentImplementation         .extendsFrom implementation
-    modlauncherImplementation   .extendsFrom implementation
-    modlauncher9Implementation  .extendsFrom modlauncherImplementation
-    modularityImplementation    .extendsFrom modlauncher9Implementation
-    modularityCompileOnly       .extendsFrom compileOnly
-
-    proguard {
-        extendsFrom fernflowerImplementation
-        extendsFrom launchwrapperImplementation
-        extendsFrom modlauncherImplementation
-        extendsFrom compileClasspath
-    }
 }
 
 sourceSets {
-    legacy {
-        ext.languageVersion = 8
-        ext.compatibility = '1.6'
-    }
     main {
-        compileClasspath += legacy.output
         ext.languageVersion = 8
         ext.compatibility = '1.6'
     }
@@ -107,65 +66,21 @@ sourceSets {
         ext.languageVersion = 8
         ext.compatibility = '1.8'
     }
-    fernflower {
-        compileClasspath += main.output
-        ext.languageVersion = 8
-        ext.compatibility = '1.6'
-        ext.modularityExcluded = true
-    }
     agent {
         compileClasspath += main.output
         ext.languageVersion = 8
         ext.compatibility = '1.6'
     }
-    bridge {
-        compileClasspath += main.output
-        ext.languageVersion = 8
-        ext.compatibility = '1.8'
-        ext.modularityExcluded = true
-    }
     example {
         compileClasspath += main.output
         compileClasspath += ap.output
-        ext.modularityExcluded = true
     }
-    test {
-        ext.modularityExcluded = true
-    }
+    test { }
     launchwrapper {
         compileClasspath += main.output
         ext.languageVersion = 8
         ext.compatibility = '1.8'
     }
-    modlauncher {
-        compileClasspath += main.output
-        ext.languageVersion = 8
-        ext.compatibility = '1.8'
-    }
-    modlauncher4 {
-        compileClasspath += main.output
-        compileClasspath += modlauncher.output
-        ext.languageVersion = 8
-        ext.compatibility = '1.8'
-    }
-    modlauncher9 {
-        ext.languageVersion = 16
-        compileClasspath += main.output
-        compileClasspath += modlauncher.output
-    }
-    modularity {
-        ext.languageVersion = 16
-        ext.modularityExcluded = true // don't add ourselves
-    }
-}
-
-// Because Mixin aims to support a variety of environments, we have to be able to run with older versions of GSON and Guava that lack official module
-// names. This means the same library may appear with multiple module names. We want to be able to link our module with either of these two at
-// runtime, without having to have two versions of the library on our compile-time module path. To do this, we generate empty "potemkin" jars with
-// *only* a module descriptor for the module we want to be able to compile against.
-potemkinModules {
-    module 'com.google.gson'
-    module 'com.google.common'
 }
 
 // Project dependencies
@@ -178,9 +93,6 @@ dependencies {
 
     implementation guava
     implementation 'com.google.code.gson:gson:2.2.4'
-    if (Float.parseFloat(asmVersion) < 6) {
-        implementation "org.ow2.asm:asm-debug-all:$asmVersion"
-    }
     implementation "org.ow2.asm:asm-tree:$asmVersion"
     implementation "org.ow2.asm:asm-commons:$asmVersion"
     implementation "org.ow2.asm:asm-util:$asmVersion"
@@ -190,51 +102,17 @@ dependencies {
     apImplementation guava
     apImplementation gson
 
-    // Fernflower decompiler
-    fernflowerImplementation 'org.jetbrains:intellij-fernflower:1.0.0.9'
-
     // LegacyLauncher service
     launchwrapperImplementation ('net.minecraft:launchwrapper:1.11') {
         exclude module: 'lwjgl'
         exclude module: 'asm-debug-all'
         exclude module: 'jopt-simple'
     }
-    
-    modlauncherImplementation 'net.sf.jopt-simple:jopt-simple:5.0.4'
-    modlauncherCompileOnly 'org.apache.logging.log4j:log4j-core:2.0-beta9'
-    modlauncherImplementation ("cpw.mods:modlauncher:$legacyModlauncherVersion") {
-        exclude module: 'asm'
-        exclude module: 'asm-analysis'
-        exclude module: 'asm-commons'
-        exclude module: 'asm-tree'
-        exclude module: 'jopt-simple'
-    }
-    
-    modlauncher4Implementation ("cpw.mods:modlauncher:$legacyModlauncherVersion") {
-        exclude module: 'asm'
-        exclude module: 'asm-analysis'
-        exclude module: 'asm-commons'
-        exclude module: 'asm-tree'
-        exclude module: 'jopt-simple'
-    }
-    
-    modlauncher9Implementation ("cpw.mods:modlauncher:$modlauncherVersion") {
-        exclude module: 'jopt-simple'
-    }
-    modlauncher9Implementation 'cpw.mods:securejarhandler:0.9.+'
-    
-    // asm bridge
-    bridgeImplementation 'org.apache.logging.log4j:log4j-core:2.0-beta9'
-    bridgeImplementation "org.ow2.asm:asm-commons:$legacyForgeAsmVersion"
-    
-    legacyImplementation "org.ow2.asm:asm-tree:$asmVersion"
-    
-    modularityCompileOnly 'org.apache.logging.log4j:log4j-core:2.11.2'
 }
 
 javadoc {
     exclude '**/throwables'
-    classpath += sourceSets.legacy.output
+    classpath += sourceSets.main.output
     source sourceSets.ap.allJava
     options.encoding = 'UTF-8'
     exclude {
@@ -251,37 +129,6 @@ javadoc {
             into outputDirectory
         }
     }
-}
-
-eclipse {
-    classpath {
-        containers 'org.eclipse.buildship.core.gradleclasspathcontainer'
-        file.whenMerged {
-            // Can't include old modlauncher because it causes issues with modules
-            entries.removeAll { it.kind == 'lib' && it.path =~ ~/modlauncher-$legacyModlauncherVersion/ }
-            entries.removeAll { it.kind == 'src' && it.path =~ ~/modlauncher4/ }
-            entries.removeAll { it.kind == 'lib' && it.path =~ ~/log4j.*beta9/ }
-            
-            // Mark everything else as a module
-            entries.findAll { it.kind == "con" && it.path =~ /gradleclasspathcontainer$/ }.each {
-                it.entryAttributes['module'] = 'true'
-            }
-        }
-    }
-    
-    project {
-        resourceFilter {
-            appliesTo = 'FOLDERS'
-            type = 'EXCLUDE_ALL'
-            matcher {
-                id = 'org.eclipse.ui.ide.multiFilter'
-                arguments = '1.0-name-matches-false-false-buildSrc'
-            }
-        }
-    }
-
-    // Build service task outputs for test projects
-    autoBuildTasks compileModlauncher4Java, compileModlauncher9Java, compileLaunchwrapperJava
 }
 
 // Filter, process, and include resources
@@ -307,25 +154,12 @@ license {
     }
 }
 
-checkstyle {
-    configProperties = [
-        "name"        : project.name,
-        "organization": project.organization,
-        "url"         : project.url,
-        "year"        : project.inceptionYear
-    ]
-    configFile = file("checkstyle.xml")
-    toolVersion = '8.44'
-}
-
 // Source compiler configuration
 tasks.withType(JavaCompile) {
     options.compilerArgs += ['-Xlint:all', '-Xlint:-path', '-proc:none']
     options.deprecation = true
     options.encoding = 'utf8'
 }
-
-def modularityInputs = objects.fileCollection()
 
 project.sourceSets.each { set -> {
     if (set.ext.has("languageVersion")) {
@@ -337,31 +171,7 @@ project.sourceSets.each { set -> {
         project.tasks[set.compileJavaTaskName].sourceCompatibility = set.ext.compatibility
         project.tasks[set.compileJavaTaskName].targetCompatibility = set.ext.compatibility
     }
-    def modularityExcluded = set.ext.has("modularityExcluded") && set.ext.modularityExcluded
-    if (!modularityExcluded) {
-        project.sourceSets.modularity {
-            compileClasspath += set.output
-        }
-        modularityInputs.from set.output
-    }
 }}
-
-compileModularityJava {
-    inputs.files(modularityInputs)
-    doFirst {
-        options.compilerArgs = [
-            '--module-path', classpath.asPath,
-            '--patch-module', "org.spongepowered.mixin=${modularityInputs.collect { it.absolutePath }.join(File.pathSeparator)}"
-        ]
-    }
-}
-
-if (JavaVersion.current().isJava8Compatible()) {
-    tasks.withType(Javadoc) {
-        // disable the crazy super-strict doclint tool in Java 8
-        options.addStringOption('Xdoclint:syntax', '-quiet')
-    }
-}
 
 task stagingJar(type: ShadowJar) {
     sourceSets.findAll { !(it.name =~ /example|test/) }.each {
@@ -375,7 +185,7 @@ task stagingJar(type: ShadowJar) {
         "Created-By": System.properties['java.vm.version'] + " (" + System.properties['java.vm.vendor'] + ")",
         "Implementation-Title": name,
         "Implementation-Version": project.version,
-        "Implementation-Vendor": url,
+        // "Implementation-Vendor": url,
         // for hotswap agent
         "Premain-Class": "org.spongepowered.tools.agent.MixinAgent",
         "Agent-Class": "org.spongepowered.tools.agent.MixinAgent",
@@ -384,28 +194,9 @@ task stagingJar(type: ShadowJar) {
     )
     
     mergeServiceFiles()
-    relocate 'com.google', 'org.spongepowered.include.com.google'
+    // relocate 'com.google', 'org.spongepowered.include.com.google'
     archiveClassifier = "staging"
 }
-
-File proguardFile = file("build/libs/sponge-mixin-${version}.jar")
-
-task stagingProguardJar(type: proguard.gradle.ProGuardTask, dependsOn: stagingJar) {
-    doFirst {
-        configurations.proguard.resolve().forEach {
-            libraryjars it
-        }
-    }
-
-    outputs.upToDateWhen { false }
-
-    libraryjars JavaVersion.current().java9Compatible ? "${System.getProperty('java.home')}/jmods" : "${System.getProperty('java.home')}/lib/rt.jar"
-
-    injars stagingJar.archiveFile
-    outjars proguardFile
-    configuration file("proguard.conf")
-}
-build.dependsOn stagingProguardJar
 
 // Clear artifacts because jar will be there by default and we want to use staging jar instead
 configurations.archives.artifacts.clear()
@@ -425,7 +216,7 @@ task timestamp(type: Jar, dependsOn: build) {
 }
 
 task sourceJar(type: Jar) {
-    sourceSets.findAll { it.name != 'modularity' }.each {
+    sourceSets.each {
         from it.java
         from it.resources
     }
@@ -455,68 +246,3 @@ ext.excludePomDeps = [
     'log4j-core'
 ]
 
-publishing {
-    publications {
-        developer(MavenPublication) { publication ->
-            groupId project.group
-            artifactId project.archivesBaseName
-            version project.version
-
-            artifact sourceJar
-            artifact javadocJar
-            artifact(proguardFile) {
-                builtBy stagingProguardJar
-                classifier = null
-            }
-
-            // https://issues.gradle.org/browse/GRADLE-2966
-            pom.withXml {
-                def dependenciesNode = asNode().appendNode('dependencies')
-
-                configurations.runtimeClasspath.allDependencies.each {
-                    if (it.group != null && it.name != null && !excludePomDeps.contains(it.name)) {
-                        def dependencyNode = dependenciesNode.appendNode('dependency')
-                        dependencyNode.appendNode('groupId', it.group)
-                        dependencyNode.appendNode('artifactId', it.name)
-                        dependencyNode.appendNode('version', it.version)
-
-                        if (it.excludeRules.size() > 0) {
-                            def exclusionsNode = dependencyNode.appendNode('exclusions')
-                            it.excludeRules.each { rule ->
-                                def exclusionNode = exclusionsNode.appendNode('exclusion')
-                                exclusionNode.appendNode('groupId', rule.group)
-                                exclusionNode.appendNode('artifactId', rule.module)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    repositories {
-        if (ENV.MAVEN_URL) {
-            maven {
-                url ENV.MAVEN_URL
-                credentials {
-                    username ENV.MAVEN_USERNAME
-                    password ENV.MAVEN_PASSWORD
-                }
-            }
-        }
-    }
-}
-
-// A task to ensure that the version being released has not already been released.
-task checkVersion {
-    doFirst {
-        def xml = new URL("https://maven.fabricmc.net/net/fabricmc/sponge-mixin/maven-metadata.xml").text
-        def metadata = new XmlSlurper().parseText(xml)
-        def versions = metadata.versioning.versions.version*.text();
-        if (versions.contains(version)) {
-            throw new RuntimeException("${version} has already been released!")
-        }
-    }
-}
-
-publish.mustRunAfter checkVersion
