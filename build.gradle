@@ -28,12 +28,10 @@ group = 'com.cleanroommc'
 archivesBaseName = 'cleanmix'
 version = buildVersion + "+mixin." + upstreamMixinVersion
 
-// Define variables
-ext.asmVersion = asmVersion
-
-// Minimum version of Java required
-sourceCompatibility = JavaVersion.VERSION_17
-targetCompatibility = JavaVersion.VERSION_17
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
 
 // Project repositories
 repositories {
@@ -42,72 +40,37 @@ repositories {
         name = 'minecraft'
         url = 'https://libraries.minecraft.net/'
     }
-    maven {
-        name = 'Fabric'
-        url = 'https://maven.fabricmc.net/'
-    }
 }
 
 configurations {
-    stagingJar
-    
-    exampleImplementation       .extendsFrom implementation
-    launchwrapperImplementation .extendsFrom implementation
-    agentImplementation         .extendsFrom implementation
+    agentImplementation.extendsFrom implementation
 }
 
 sourceSets {
-    main {
-        ext.languageVersion = 8
-        ext.compatibility = '1.6'
-    }
     ap {
         compileClasspath += main.output
-        ext.languageVersion = 8
-        ext.compatibility = '1.8'
+        runtimeClasspath += main.output
     }
     agent {
         compileClasspath += main.output
-        ext.languageVersion = 8
-        ext.compatibility = '1.6'
-    }
-    example {
-        compileClasspath += main.output
-        compileClasspath += ap.output
-    }
-    test { }
-    launchwrapper {
-        compileClasspath += main.output
-        ext.languageVersion = 8
-        ext.compatibility = '1.8'
+        runtimeClasspath += main.output
     }
 }
 
 // Project dependencies
 dependencies {
-    def guava = 'com.google.guava:guava:21.0' // from mc1.12 onwards
-    def gson = 'com.google.code.gson:gson:2.2.4'
+    implementation 'com.google.guava:guava:32.1.3-jre'
+    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'org.ow2.asm:asm-tree:9.6'
+    implementation 'org.ow2.asm:asm-commons:9.6'
+    implementation 'org.ow2.asm:asm-util:9.6'
+    // TODO: slf4j
+    implementation 'org.apache.logging.log4j:log4j-api:2.22.0'
+    implementation 'org.apache.logging.log4j:log4j-core:2.22.0'
 
-    stagingJar guava
-    stagingJar gson
-
-    implementation guava
-    implementation 'com.google.code.gson:gson:2.2.4'
-    implementation "org.ow2.asm:asm-tree:$asmVersion"
-    implementation "org.ow2.asm:asm-commons:$asmVersion"
-    implementation "org.ow2.asm:asm-util:$asmVersion"
-
-    // Annotation Processor
-    apImplementation "org.ow2.asm:asm-tree:$asmVersion"
-    apImplementation guava
-    apImplementation gson
-
-    // LegacyLauncher service
-    launchwrapperImplementation ('net.minecraft:launchwrapper:1.11') {
-        exclude module: 'lwjgl'
-        exclude module: 'asm-debug-all'
-        exclude module: 'jopt-simple'
-    }
+    apImplementation 'org.ow2.asm:asm-tree:9.6'
+    apImplementation 'com.google.guava:guava:32.1.3-jre'
+    apImplementation 'com.google.code.gson:gson:2.10.1'
 }
 
 javadoc {
@@ -161,40 +124,26 @@ tasks.withType(JavaCompile) {
     options.encoding = 'utf8'
 }
 
-project.sourceSets.each { set -> {
-    if (set.ext.has("languageVersion")) {
-        project.tasks[set.compileJavaTaskName].javaCompiler = javaToolchains.compilerFor {
-            languageVersion = JavaLanguageVersion.of(set.ext.languageVersion)
-        }
-    } 
-    if (set.ext.has("compatibility")) {
-        project.tasks[set.compileJavaTaskName].sourceCompatibility = set.ext.compatibility
-        project.tasks[set.compileJavaTaskName].targetCompatibility = set.ext.compatibility
-    }
-}}
+jar {
+    manifest.attributes([
+            'Specification-Title'   : 'org.spongepowered',
+            'Specification-Vendor'  : 'SpongePowered',
+            'Specification-Version' : '0.8.5',
+            'Implementation-Title'  : project.group,
+            'Implementation-Version': buildVersion,
+            'Implementation-Vendor' : 'CleanroomMC',
+            "Premain-Class": "org.spongepowered.tools.agent.MixinAgent",
+            "Agent-Class": "org.spongepowered.tools.agent.MixinAgent",
+            "Can-Redefine-Classes": true,
+            "Can-Retransform-Classes": true
+    ])
+}
 
 task stagingJar(type: ShadowJar) {
     sourceSets.findAll { !(it.name =~ /example|test/) }.each {
         from it.output
     }
-    configurations = [project.configurations.stagingJar]
-    
-    // JAR manifest configuration
-    manifest.attributes(
-        "Built-By": System.properties['user.name'],
-        "Created-By": System.properties['java.vm.version'] + " (" + System.properties['java.vm.vendor'] + ")",
-        "Implementation-Title": name,
-        "Implementation-Version": project.version,
-        // "Implementation-Vendor": url,
-        // for hotswap agent
-        "Premain-Class": "org.spongepowered.tools.agent.MixinAgent",
-        "Agent-Class": "org.spongepowered.tools.agent.MixinAgent",
-        "Can-Redefine-Classes": true,
-        "Can-Retransform-Classes": true
-    )
-    
     mergeServiceFiles()
-    // relocate 'com.google', 'org.spongepowered.include.com.google'
     archiveClassifier = "staging"
 }
 
@@ -202,7 +151,7 @@ task stagingJar(type: ShadowJar) {
 configurations.archives.artifacts.clear()
 
 // generate shadow jar so we can use the AP standalone
-shadowJar  {
+shadowJar {
     from sourceSets.ap.output
     archiveClassifier = 'processor'
 }
@@ -235,14 +184,3 @@ artifacts {
     archives javadocJar
     archives shadowJar
 }
-
-ext.excludePomDeps = [
-    'fernflower',
-    'jarjar',
-    'hamcrest-library',
-    'junit',
-    'mockito-core',
-    'mixin-asm-debug-all',
-    'log4j-core'
-]
-

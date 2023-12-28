@@ -32,6 +32,7 @@ import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.cleanroommc.cleanmix.CleanMix;
 import org.spongepowered.asm.logging.ILogger;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.ClassNode;
@@ -133,14 +134,14 @@ public class MixinAgent implements IHotSwap {
      * transformer this causes a class file format exception and indicates in
      * the ide that somethings went wrong.
      */
-    public static final byte[] ERROR_BYTECODE = new byte[]{1};
+    public static final byte[] ERROR_BYTECODE = new byte[] { 1 };
+
+    static final ILogger logger = CleanMix.logger("CleanMix|Agent");
 
     /**
      * Class loader used to load mixin classes
      */
     static final MixinAgentClassLoader classLoader = new MixinAgentClassLoader();
-
-    static final ILogger logger = MixinService.getService().getLogger("mixin.agent");
 
     /**
      * Instance used to register the transformer

@@ -34,16 +34,14 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.MixinEnvironment;
-import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.util.Constants;
 
 /**
- * Class loader that is used to load fake mixin classes so that they can be
- * re-defined.
+ * Class loader that is used to load fake mixin classes so that they can be re-defined.
  */
 class MixinAgentClassLoader extends ClassLoader {
 
-    private static final ILogger logger = MixinService.getService().getLogger("mixin.agent");
+    static final ILogger logger = MixinAgent.logger;
 
     /**
      * Mapping of mixin mixin classes to their fake classes
