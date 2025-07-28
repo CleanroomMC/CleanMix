@@ -11,7 +11,7 @@ buildscript {
 
 plugins {
     id "me.modmuss50.remotesign" version "0.5.0"
-    id "com.gradleup.shadow"  version "9.0.0-beta17"
+    id "com.gradleup.shadow"  version "9.0.0-rc1"
     id "dev.lukebemish.central-portal-publishing" version "0.1.7"
 }
 
@@ -142,6 +142,10 @@ sourceSets {
         ext.languageVersion = 16
         ext.modularityExcluded = true // don't add ourselves
     }
+    foundation {
+        compileClasspath += main.output
+        ext.languageVersion = 21
+    }
     modularityDummy {}
 }
 
@@ -151,6 +155,7 @@ configurations {
     exampleImplementation       .extendsFrom implementation
     fernflowerImplementation    .extendsFrom implementation
     launchwrapperImplementation .extendsFrom implementation
+    foundationImplementation    .extendsFrom implementation
     agentImplementation         .extendsFrom implementation
     modlauncherImplementation   .extendsFrom implementation
     modlauncher9Implementation  .extendsFrom modlauncherImplementation
@@ -160,6 +165,7 @@ configurations {
     proguard {
         extendsFrom fernflowerImplementation
         extendsFrom launchwrapperImplementation
+        extendsFrom foundationImplementation
         extendsFrom modlauncherImplementation
         extendsFrom compileClasspath
     }
