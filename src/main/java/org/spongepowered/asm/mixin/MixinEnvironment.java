@@ -93,6 +93,11 @@ public final class MixinEnvironment implements ITokenProvider {
          * "Default" phase, during runtime
          */
         public static final Phase DEFAULT = new Phase(2, "DEFAULT");
+
+        /**
+         * "Mod" phase, after mod list is available
+         */
+        public static final Phase MOD = new Phase(3, "Phase");
         
         /**
          * All phases
@@ -100,7 +105,8 @@ public final class MixinEnvironment implements ITokenProvider {
         static final List<Phase> phases = ImmutableList.of(
             Phase.PREINIT,
             Phase.INIT,
-            Phase.DEFAULT
+            Phase.DEFAULT,
+            Phase.MOD
         );
         
         /**
