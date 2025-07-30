@@ -290,7 +290,9 @@ public final class MixinService {
         while (iter.hasNext()) {
             try {
                 IGlobalPropertyService service = iter.next();
-                return service;
+                if (service.isValid()) {
+                    return service;
+                }
             } catch (ServiceConfigurationError serviceError) {
 //                serviceError.printStackTrace();
             } catch (Throwable th) {

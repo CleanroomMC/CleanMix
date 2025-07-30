@@ -75,6 +75,11 @@ repositories {
         name = 'neoforged'
         url = 'https://maven.neoforged.net/releases'
     }
+    maven {
+        name = 'Cleanroom'
+        url 'https://repo.cleanroommc.com/releases'
+    }
+
 }
 
 sourceSets {
@@ -211,6 +216,13 @@ dependencies {
         exclude module: 'asm-debug-all'
         exclude module: 'jopt-simple'
     }
+
+    foundationImplementation ('top.outlands:foundation:0.15.3') {
+        transitive = false
+    }
+    foundationImplementation 'org.apache.logging.log4j:log4j-api:2.25.1'
+    foundationImplementation 'org.apache.logging.log4j:log4j-core:2.25.1'
+    foundationImplementation 'org.apache.logging.log4j:log4j-slf4j2-impl:2.25.1'
     
     modlauncherImplementation 'net.sf.jopt-simple:jopt-simple:5.0.4'
     modlauncherCompileOnly 'org.apache.logging.log4j:log4j-core:2.0-beta9'

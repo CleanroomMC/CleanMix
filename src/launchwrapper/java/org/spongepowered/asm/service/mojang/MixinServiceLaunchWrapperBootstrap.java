@@ -24,6 +24,8 @@
  */
 package org.spongepowered.asm.service.mojang;
 
+import net.minecraft.launchwrapper.IClassTransformer;
+import net.minecraft.launchwrapper.LaunchClassLoader;
 import org.spongepowered.asm.service.IMixinServiceBootstrap;
 import org.spongepowered.asm.service.ServiceInitialisationException;
 
@@ -57,7 +59,10 @@ public class MixinServiceLaunchWrapperBootstrap implements IMixinServiceBootstra
     public void bootstrap() {
         try {
             Launch.classLoader.hashCode();
-        } catch (Throwable th) {
+        } catch (Throwable e) {
+            throw new ServiceInitialisationException(this.getName() + " is not available");
+        }
+        if (IClassTransformer.class.getClassLoader() instanceof LaunchClassLoader) {
             throw new ServiceInitialisationException(this.getName() + " is not available");
         }
         

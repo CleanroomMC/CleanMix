@@ -22,10 +22,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.asm.service.mojang;
+package org.spongepowered.asm.service.outlands;
 
-import net.minecraft.launchwrapper.IClassTransformer;
-import net.minecraft.launchwrapper.LaunchClassLoader;
 import org.spongepowered.asm.service.IGlobalPropertyService;
 import org.spongepowered.asm.service.IPropertyKey;
 
@@ -39,7 +37,7 @@ public class Blackboard implements IGlobalPropertyService {
     /**
      * Property key
      */
-    class Key implements IPropertyKey {
+    static class Key implements IPropertyKey {
         
         private final String key;
 
@@ -54,7 +52,6 @@ public class Blackboard implements IGlobalPropertyService {
     }
 
     public Blackboard() {
-        Launch.classLoader.hashCode();
     }
     
     @Override
@@ -118,13 +115,13 @@ public class Blackboard implements IGlobalPropertyService {
     }
 
     @Override
-    public final boolean isValid() {
+    public boolean isValid() {
         try {
-            Launch.classLoader.hashCode();
-        } catch (Throwable e) {
+            Launch.appClassLoader.hashCode();
+        } catch (Throwable t) {
             return false;
         }
-        return !(IClassTransformer.class.getClassLoader() instanceof LaunchClassLoader);
+        return true;
     }
 
 }

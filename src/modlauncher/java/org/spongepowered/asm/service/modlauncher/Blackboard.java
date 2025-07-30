@@ -109,4 +109,14 @@ public class Blackboard implements IGlobalPropertyService {
         return this.blackboard.<T>get(((Key<T>)key).key).orElse(defaultValue);
     }
 
+    @Override
+    public boolean isValid() {
+        try {
+            Launcher.INSTANCE.blackboard().hashCode();
+        } catch (Throwable th) {
+            return false;
+        }
+        return true;
+    }
+
 }
