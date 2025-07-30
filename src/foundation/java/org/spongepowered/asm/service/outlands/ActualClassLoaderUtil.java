@@ -58,7 +58,7 @@ final class ActualClassLoaderUtil implements IClassTracker {
     ActualClassLoaderUtil(LaunchClassLoader classLoader) {
         this.classLoader = classLoader;
         this.invalidClasses = Launch.classLoader.getInvalidClasses();
-        this.transformerExceptions = HashSet.newHashSet(20);
+        this.transformerExceptions = new HashSet<>(20);
         transformerExceptions.addAll(Launch.classLoader.getTransformerExclusions());
     }
 

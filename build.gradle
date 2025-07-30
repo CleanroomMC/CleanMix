@@ -11,7 +11,7 @@ buildscript {
 
 plugins {
     id "me.modmuss50.remotesign" version "0.5.0"
-    id "com.gradleup.shadow"  version "9.0.0-rc1"
+    id "com.gradleup.shadow"  version "9.0.0-rc2"
     id "dev.lukebemish.central-portal-publishing" version "0.1.7"
 }
 
@@ -149,7 +149,7 @@ sourceSets {
     }
     foundation {
         compileClasspath += main.output
-        ext.languageVersion = 21
+        ext.languageVersion = 8
     }
     modularityDummy {}
 }

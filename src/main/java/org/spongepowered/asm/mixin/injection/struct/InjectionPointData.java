@@ -391,9 +391,9 @@ public class InjectionPointData {
     /**
      * Get a list of opcodes specified in the injection point arguments. The
      * opcodes can be specified as raw integer values or as their corresponding
-     * constant name from the {@link Opcodes} interface. All the values should
+     * constant name from the {@link org.objectweb.asm.Opcodes} interface. All the values should
      * be separated by spaces or commas. The returned array is sorted in order
-     * to make it suitable for use with the {@link Arrays#binarySearch} method.
+     * to make it suitable for use with the {@link java.util.Arrays#binarySearch} method.
      * 
      * @param key argument name
      * @param defaultValue value to return if the key is not specified

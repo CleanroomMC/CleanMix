@@ -352,7 +352,7 @@ public class MixinServiceFoundation extends MixinServiceAbstract implements ICla
             if (transformer instanceof ITransformer) {
                 wrapped.add((ITransformer)transformer);
             } else {
-                wrapped.add(new LegacyTransformerHandle(transformer));
+                wrapped.add(new FoundationTransformerHandle(transformer));
             }
             
             if (transformer instanceof IClassNameTransformer) {

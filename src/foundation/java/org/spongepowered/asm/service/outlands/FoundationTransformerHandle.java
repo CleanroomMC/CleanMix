@@ -36,14 +36,14 @@ import net.minecraft.launchwrapper.IClassTransformer;
  * A handle for a legacy {@link IClassTransformer} for processing as a legacy
  * transformer
  */
-class LegacyTransformerHandle implements ILegacyClassTransformer {
+class FoundationTransformerHandle implements ILegacyClassTransformer {
     
     /**
      * Wrapped transformer
      */
     private final IClassTransformer transformer;
     
-    LegacyTransformerHandle(IClassTransformer transformer) {
+    FoundationTransformerHandle(IClassTransformer transformer) {
         this.transformer = transformer;
     }
     
