@@ -5,7 +5,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.guardsquare:proguard-gradle:' + (JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_11) ? '7.5.0' : '7.1.0')
+        classpath 'com.guardsquare:proguard-gradle:' + (JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_11) ? '7.7.0' : '7.1.0')
     }
 }
 
@@ -16,6 +16,8 @@ plugins {
 }
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.spongepowered.asm.mixin.build.ValidateLicenseHeadersTasks
+import proguard.gradle.ProGuardTask
 
 // Apply plugin
 apply plugin: 'java'
@@ -149,7 +151,7 @@ sourceSets {
     }
     foundation {
         compileClasspath += main.output
-        ext.languageVersion = 8
+        ext.languageVersion = 21
     }
     modularityDummy {}
 }
@@ -223,6 +225,7 @@ dependencies {
     foundationImplementation 'org.apache.logging.log4j:log4j-api:2.25.1'
     foundationImplementation 'org.apache.logging.log4j:log4j-core:2.25.1'
     foundationImplementation 'org.apache.logging.log4j:log4j-slf4j2-impl:2.25.1'
+    foundationImplementation "org.ow2.asm:asm-commons:$asmVersion"
     
     modlauncherImplementation 'net.sf.jopt-simple:jopt-simple:5.0.4'
     modlauncherCompileOnly 'org.apache.logging.log4j:log4j-core:2.0-beta9'
@@ -315,7 +318,7 @@ processResources {
 }
 
 // License header formatting
-def validateHeaders = tasks.register("validateHeaders", org.spongepowered.asm.mixin.build.ValidateLicenseHeadersTasks) {
+def validateHeaders = tasks.register("validateHeaders", ValidateLicenseHeadersTasks) {
     header = resources.text.fromFile("HEADER.txt")
     source = sourceSets.collect { it.allJava }
 }
@@ -334,7 +337,7 @@ checkstyle {
 }
 
 // Source compiler configuration
-tasks.withType(JavaCompile) {
+tasks.withType(JavaCompile).configureEach {
     options.compilerArgs += ['-Xlint:all', '-Xlint:-path', '-proc:none']
     options.deprecation = true
     options.encoding = 'utf8'
@@ -370,40 +373,66 @@ compileModularityJava {
 }
 
 if (JavaVersion.current().isJava8Compatible()) {
-    tasks.withType(Javadoc) {
+    tasks.withType(Javadoc).configureEach {
         // disable the crazy super-strict doclint tool in Java 8
         options.addStringOption('Xdoclint:syntax', '-quiet')
     }
 }
 
-task stagingJar(type: ShadowJar) {
-    sourceSets.findAll { !(it.name =~ /example|test|modularityDummy/) }.each {
+tasks.register('stagingJar', ShadowJar) {
+
+    sourceSets.findAll { !(it.name =~ /example|test|modularityDummy|foundation/) }.each {
         from it.output
     }
     configurations = [project.configurations.stagingJar]
-    
+
     // JAR manifest configuration
     manifest.attributes(
-        "Built-By": System.properties['user.name'],
-        "Created-By": System.properties['java.vm.version'] + " (" + System.properties['java.vm.vendor'] + ")",
-        "Implementation-Title": name,
-        "Implementation-Version": project.version,
-        "Implementation-Vendor": url,
-        // for hotswap agent
-        "Premain-Class": "org.spongepowered.tools.agent.MixinAgent",
-        "Agent-Class": "org.spongepowered.tools.agent.MixinAgent",
-        "Can-Redefine-Classes": true,
-        "Can-Retransform-Classes": true
+            "Built-By": System.properties['user.name'],
+            "Created-By": System.properties['java.vm.version'] + " (" + System.properties['java.vm.vendor'] + ")",
+            "Implementation-Title": name,
+            "Implementation-Version": project.version,
+            "Implementation-Vendor": url,
+            // for hotswap agent
+            "Premain-Class": "org.spongepowered.tools.agent.MixinAgent",
+            "Agent-Class": "org.spongepowered.tools.agent.MixinAgent",
+            "Can-Redefine-Classes": true,
+            "Can-Retransform-Classes": true
     )
-    
+
     mergeServiceFiles()
     relocate 'com.google', 'org.spongepowered.include.com.google'
     archiveClassifier = "staging"
 }
 
+tasks.register('lightJar', ShadowJar) {
+
+    sourceSets.findAll { !(it.name =~ /example|test|modularityDummy/) }.each {
+        from it.output
+    }
+
+    // JAR manifest configuration
+    manifest.attributes(
+            "Built-By": System.properties['user.name'],
+            "Created-By": System.properties['java.vm.version'] + " (" + System.properties['java.vm.vendor'] + ")",
+            "Implementation-Title": name,
+            "Implementation-Version": project.version,
+            "Implementation-Vendor": url,
+            // for hotswap agent
+            "Premain-Class": "org.spongepowered.tools.agent.MixinAgent",
+            "Agent-Class": "org.spongepowered.tools.agent.MixinAgent",
+            "Can-Redefine-Classes": true,
+            "Can-Retransform-Classes": true
+    )
+
+    mergeServiceFiles()
+    archiveClassifier = "light"
+}
+
 File proguardFile = file("build/libs/sponge-mixin-${version}.jar")
 
-task stagingProguardJar(type: proguard.gradle.ProGuardTask, dependsOn: stagingJar) {
+tasks.register('stagingProguardJar', ProGuardTask) {
+    dependsOn stagingJar
     doFirst {
         configurations.proguard.resolve().forEach {
             libraryjars it
@@ -431,13 +460,14 @@ shadowJar  {
 build.dependsOn(shadowJar)
 
 // Run this task instead of build to generate a timestamped shadow jar (for dev)
-task timestamp(type: Jar, dependsOn: build) {
+tasks.register('timestamp', Jar) {
+    dependsOn build
     if (gradle.startParameter.taskNames.contains(name)) {
         shadowJar.archiveClassifier = new Date().format('yyyyMMddHHmmss')
     }
 }
 
-task sourceJar(type: Jar) {
+tasks.register('sourceJar', Jar) {
     sourceSets.findAll { it.name != 'modularity' }.each {
         from it.java
         from it.resources
@@ -446,7 +476,8 @@ task sourceJar(type: Jar) {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
-task javadocJar(type: Jar, dependsOn: javadoc) {
+tasks.register('javadocJar', Jar) {
+    dependsOn javadoc
     from javadoc.destinationDir
     archiveClassifier = "javadoc"
 }
@@ -456,6 +487,7 @@ artifacts {
     archives sourceJar
     archives javadocJar
     archives shadowJar
+    archives lightJar
 }
 
 ext.excludePomDeps = [
@@ -513,25 +545,25 @@ publishing {
             }
 
             pom {
-                name = "Fabric Mixin"
-                description = 'Fabric Mixin is a trait/mixin and bytecode weaving framework for Java using ASM.'
-                url = 'https://github.com/FabricMC/Mixin'
+                name = "CleanMix"
+                description = 'CleanMix is a trait/mixin and bytecode weaving framework for Java using ASM.'
+                url = 'https://github.com/CleanroomMC/CleanMix'
 
                 scm {
-                    connection = "scm:git:https://github.com/FabricMC/Mixin.git"
+                    connection = "scm:git:https://github.com/CleanroomMC/CleanMix.git"
                     developerConnection = "scm:git:git@github.com:FabricMC/Mixin.git"
-                    url = "https://github.com/FabricMC/Mixin"
+                    url = "https://github.com/CleanroomMC/CleanMix"
                 }
 
                 issueManagement {
                     system = "GitHub"
-                    url = "https://github.com/FabricMC/Mixin/issues"
+                    url = "https://github.com/CleanroomMC/CleanMix/issues"
                 }
 
                 licenses {
                     license {
                         name = 'The MIT License'
-                        url = 'https://raw.githubusercontent.com/FabricMC/Mixin/main/LICENSE.txt'
+                        url = 'https://raw.githubusercontent.com/CleanroomMC/CleanMix/main/LICENSE.txt'
                     }
                 }
 
@@ -577,7 +609,7 @@ remoteSign {
 }
 
 // A task to ensure that the version being released has not already been released.
-task checkVersion {
+tasks.register('checkVersion') {
     doFirst {
         def xml = new URL("https://maven.fabricmc.net/net/fabricmc/sponge-mixin/maven-metadata.xml").text
         def metadata = new XmlSlurper().parseText(xml)
@@ -588,4 +620,4 @@ task checkVersion {
     }
 }
 
-publish.mustRunAfter checkVersion
+// publish.mustRunAfter checkVersion
