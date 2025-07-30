@@ -39,7 +39,7 @@ import net.minecraft.launchwrapper.LaunchClassLoader;
  * them to perform some validation tasks, and insert entries for mixin "classes"
  * into the invalid classes set.
  */
-final class LaunchClassLoaderUtil implements IClassTracker {
+final class ActualClassLoaderUtil implements IClassTracker {
     
     /**
      * ClassLoader for this util
@@ -55,7 +55,7 @@ final class LaunchClassLoaderUtil implements IClassTracker {
      * 
      * @param classLoader class loader
      */
-    LaunchClassLoaderUtil(LaunchClassLoader classLoader) {
+    ActualClassLoaderUtil(LaunchClassLoader classLoader) {
         this.classLoader = classLoader;
         this.invalidClasses = Launch.classLoader.getInvalidClasses();
         this.transformerExceptions = HashSet.newHashSet(20);

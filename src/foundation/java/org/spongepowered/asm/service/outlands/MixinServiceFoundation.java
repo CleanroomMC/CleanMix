@@ -41,7 +41,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.ClassNode;
-import org.spongepowered.asm.launch.GlobalProperties;
 import org.spongepowered.asm.launch.GlobalProperties.Keys;
 import org.spongepowered.asm.launch.platform.MainAttributes;
 import org.spongepowered.asm.launch.platform.container.ContainerHandleURI;
@@ -109,7 +108,7 @@ public class MixinServiceFoundation extends MixinServiceAbstract implements ICla
     /**
      * Utility for reflecting into Launch ClassLoader
      */
-    private final LaunchClassLoaderUtil classLoaderUtil;
+    private final ActualClassLoaderUtil classLoaderUtil;
     
     /**
      * Local transformer chain, this consists of all transformers present at the
@@ -125,7 +124,7 @@ public class MixinServiceFoundation extends MixinServiceAbstract implements ICla
     private IClassNameTransformer nameTransformer;
     
     public MixinServiceFoundation() {
-        this.classLoaderUtil = new LaunchClassLoaderUtil(Launch.classLoader);
+        this.classLoaderUtil = new ActualClassLoaderUtil(Launch.classLoader);
     }
     
     @Override
