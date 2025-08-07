@@ -79,25 +79,15 @@ import net.minecraft.launchwrapper.Launch;
  */
 public class MixinServiceFoundation extends MixinServiceAbstract implements IClassProvider, IClassBytecodeProvider, ITransformerProvider {
 
-    // Blackboard keys
-    public static final Keys BLACKBOARD_KEY_TWEAKCLASSES = Keys.of("TweakClasses");
-    public static final Keys BLACKBOARD_KEY_TWEAKS = Keys.of("Tweaks");
     
-    private static final String MIXIN_TWEAKER_CLASS = MixinServiceAbstract.LAUNCH_PACKAGE + "MixinTweaker";
-    
-    // Consts
-    private static final String STATE_TWEAKER = MixinServiceAbstract.MIXIN_PACKAGE + "EnvironmentStateTweaker";
-    private static final String TRANSFORMER_PROXY_CLASS = MixinServiceAbstract.MIXIN_PACKAGE + "transformer.Proxy";
-    
+    public static final String MIXIN_TWEAKER_CLASS = MixinServiceAbstract.LAUNCH_PACKAGE + "MixinTweaker";
+
     /**
      * Known re-entrant transformers, other re-entrant transformers will
      * detected automatically 
      */
     private static final Set<String> excludeTransformers = Sets.<String>newHashSet(
-        "net.minecraftforge.fml.common.asm.transformers.EventSubscriptionTransformer",
-        "cpw.mods.fml.common.asm.transformers.EventSubscriptionTransformer",
-        "net.minecraftforge.fml.common.asm.transformers.TerminalTransformer",
-        "cpw.mods.fml.common.asm.transformers.TerminalTransformer"
+        "net.minecraftforge.fml.common.asm.transformers.EventSubscriptionTransformer"
     );
     
     /**
@@ -193,7 +183,7 @@ public class MixinServiceFoundation extends MixinServiceAbstract implements ICla
     
     @Override
     public IContainerHandle getPrimaryContainer() {
-        URI uri = null;
+        URI uri;
         try {
             uri = this.getClass().getProtectionDomain().getCodeSource().getLocation().toURI();
             if (uri != null) {
@@ -308,7 +298,6 @@ public class MixinServiceFoundation extends MixinServiceAbstract implements ICla
      */
     @Override
     public void beginPhase() {
-        Launch.classLoader.registerTransformer(MixinServiceFoundation.TRANSFORMER_PROXY_CLASS);
         this.delegatedTransformers = null;
     }
     
@@ -347,7 +336,7 @@ public class MixinServiceFoundation extends MixinServiceAbstract implements ICla
     @Override
     public Collection<ITransformer> getTransformers() {
         List<IClassTransformer> transformers = Launch.classLoader.getTransformers();
-        List<ITransformer> wrapped = new ArrayList<ITransformer>(transformers.size());
+        List<ITransformer> wrapped = new ArrayList<>(transformers.size());
         for (IClassTransformer transformer : transformers) {
             if (transformer instanceof ITransformer) {
                 wrapped.add((ITransformer)transformer);
@@ -372,7 +361,7 @@ public class MixinServiceFoundation extends MixinServiceAbstract implements ICla
      */
     @Override
     public List<ITransformer> getDelegatedTransformers() {
-        return Collections.<ITransformer>unmodifiableList(this.getDelegatedLegacyTransformers());
+        return Collections.unmodifiableList(this.getDelegatedLegacyTransformers());
     }
     
     private List<ILegacyClassTransformer> getDelegatedLegacyTransformers() {
@@ -391,13 +380,12 @@ public class MixinServiceFoundation extends MixinServiceAbstract implements ICla
      */
     private void buildTransformerDelegationList() {
         MixinServiceFoundation.logger.debug("Rebuilding transformer delegation list:");
-        this.delegatedTransformers = new ArrayList<ILegacyClassTransformer>();
+        this.delegatedTransformers = new ArrayList<>();
         for (ITransformer transformer : this.getTransformers()) {
-            if (!(transformer instanceof ILegacyClassTransformer)) {
+            if (!(transformer instanceof ILegacyClassTransformer legacyTransformer)) {
                 continue;
             }
-            
-            ILegacyClassTransformer legacyTransformer = (ILegacyClassTransformer)transformer;
+
             String transformerName = legacyTransformer.getName();
             boolean include = true;
             for (String excludeClass : MixinServiceFoundation.excludeTransformers) {
@@ -447,12 +435,7 @@ public class MixinServiceFoundation extends MixinServiceAbstract implements ICla
             return classBytes;
         }
 
-        URLClassLoader appClassLoader;
-        if (Launch.class.getClassLoader() instanceof URLClassLoader) {
-            appClassLoader = (URLClassLoader) Launch.class.getClassLoader();
-        } else {
-            appClassLoader = new URLClassLoader(new URL[]{}, Launch.class.getClassLoader());
-        }
+        ClassLoader appClassLoader = Launch.appClassLoader;
 
         InputStream classStream = null;
         try {

@@ -381,7 +381,7 @@ if (JavaVersion.current().isJava8Compatible()) {
 
 tasks.register('stagingJar', ShadowJar) {
 
-    sourceSets.findAll { !(it.name =~ /example|test|modularityDummy|foundation/) }.each {
+    sourceSets.findAll { !(it.name =~ /example|test|modularityDummy|foundation|mod.*/) }.each {
         from it.output
     }
     configurations = [project.configurations.stagingJar]
@@ -407,7 +407,7 @@ tasks.register('stagingJar', ShadowJar) {
 
 tasks.register('lightJar', ShadowJar) {
 
-    sourceSets.findAll { !(it.name =~ /example|test|modularityDummy/) }.each {
+    sourceSets.findAll { !(it.name =~ /example|test|modularityDummy|launchwrapper|mod.*/) }.each {
         from it.output
     }
 
@@ -516,6 +516,7 @@ publishing {
 
             artifact sourceJar
             artifact javadocJar
+            artifact lightJar
             artifact(proguardFile) {
                 builtBy stagingProguardJar
                 classifier = null
