@@ -881,7 +881,6 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
         for (Iterator<MixinInfo> iter = this.mixins.iterator(); iter.hasNext();) {
             MixinInfo mixin = iter.next();
             try {
-                mixin.validate();
                 for (IListener listener : this.listeners) {
                     listener.onInit(mixin);
                 }

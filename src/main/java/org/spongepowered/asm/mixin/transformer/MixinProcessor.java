@@ -334,7 +334,10 @@ class MixinProcessor {
                     mixins.addAll(config.getMixinsFor(name));
                 }
             }
-            
+            if (mixins != null) {
+                mixins.forEach(MixinInfo::validate);
+            }
+
             if (mixins != null) {
                 // Re-entrance is "safe" as long as we don't need to apply any mixins, if there are mixins then we need to panic now
                 if (locked) {
