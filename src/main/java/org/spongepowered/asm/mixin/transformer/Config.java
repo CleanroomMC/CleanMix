@@ -106,6 +106,20 @@ public class Config {
         return parent != null ? parent.getHandle() : null;
     }
 
+    /**
+     * Decorate this config with arbitrary metadata for debugging or
+     * compatibility purposes
+     *
+     * @param key meta key
+     * @param value meta value
+     * @param <V> value type
+     * @throws IllegalArgumentException if the specified key exists already
+     */
+    public <V> void decorate(String key, V value) {
+        this.config.decorate(key, value);
+    }
+
+
     /* (non-Javadoc)
      * @see java.lang.Object#toString()
      */

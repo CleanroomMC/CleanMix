@@ -29,7 +29,7 @@ import org.spongepowered.asm.mixin.extensibility.IMixinConfig;
 import org.spongepowered.asm.mixin.injection.selectors.ISelectorContext;
 
 public final class FabricUtil {
-    public static final String KEY_MOD_ID = "fabric-modId";
+    public static final String KEY_MOD_ID = "cleanroom-modId";
     public static final String KEY_COMPATIBILITY = "fabric-compat";
 
     // fabric mixin version compatibility boundaries, (major * 1000 + minor) * 1000 + patch

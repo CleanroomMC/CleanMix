@@ -203,13 +203,11 @@ public class BeforeLoadLocal extends LocalVariableInjectionPoint {
     boolean find(InjectionInfo info, InsnList insns, Collection<AbstractInsnNode> nodes, Target target) {
         SearchState state = new SearchState();
 
-        ListIterator<AbstractInsnNode> iter = (org.spongepowered.asm.mixin.FabricUtil.getCompatibility(info) >= org.spongepowered.asm.mixin.FabricUtil.COMPATIBILITY_0_10_0 ? insns : target.method.instructions).iterator();
-        while (iter.hasNext()) {
-            AbstractInsnNode insn = iter.next();
+        for (AbstractInsnNode insn : insns) {
             if (state.isPendingCheck()) {
                 state.check(info, target, nodes, insn);
-            } else  if (insn instanceof VarInsnNode && insn.getOpcode() == this.opcode && (this.ordinal == -1 || !state.success())) {
-                state.register((VarInsnNode)insn);
+            } else if (insn instanceof VarInsnNode && insn.getOpcode() == this.opcode && (this.ordinal == -1 || !state.success())) {
+                state.register((VarInsnNode) insn);
                 if (this.opcodeAfter) {
                     state.setPendingCheck();
                 } else {
