@@ -598,7 +598,7 @@ publishing {
             }
         }
 
-        centralPortalPublishing.portalBundle(':', 'mixin')
+        //centralPortalPublishing.portalBundle(':', 'mixin')
     }
 }
 

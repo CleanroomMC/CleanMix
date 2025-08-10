@@ -119,7 +119,7 @@ public class MixinServiceFoundation extends MixinServiceAbstract implements ICla
     
     @Override
     public String getName() {
-        return "LaunchWrapper";
+        return "Foundation";
     }
     
     /* (non-Javadoc)
@@ -128,7 +128,7 @@ public class MixinServiceFoundation extends MixinServiceAbstract implements ICla
     @Override
     public boolean isValid() {
         try {
-            // Detect launchwrapper
+            // Detect foundation
             Launch.appClassLoader.hashCode();
         } catch (Throwable ex) {
             return false;
@@ -582,23 +582,6 @@ public class MixinServiceFoundation extends MixinServiceAbstract implements ICla
         ClassReader classReader = new MixinClassReader(classBytes, className);
         classReader.accept(classNode, flags);
         return classNode;
-    }
-
-    private static int findInStackTrace(String className, String methodName) {
-        Thread currentThread = Thread.currentThread();
-        
-        if (!"main".equals(currentThread.getName())) {
-            return 0;
-        }
-        
-        StackTraceElement[] stackTrace = currentThread.getStackTrace();
-        for (StackTraceElement s : stackTrace) {
-            if (className.equals(s.getClassName()) && methodName.equals(s.getMethodName())) {
-                return s.getLineNumber();
-            }
-        }
-        
-        return 0;
     }
     
 }
