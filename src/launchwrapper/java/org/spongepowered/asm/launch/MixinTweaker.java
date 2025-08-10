@@ -25,12 +25,16 @@
 package org.spongepowered.asm.launch;
 
 import java.io.File;
+import java.net.URL;
 import java.util.List;
 
+import net.minecraft.launchwrapper.Launch;
 import org.spongepowered.asm.launch.platform.CommandLineOptions;
 
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.LaunchClassLoader;
+import org.spongepowered.asm.mixin.FabricUtil;
+import org.spongepowered.asm.mixin.transformer.Config;
 
 /**
  * TweakClass for running mixins in production. Being a tweaker ensures that we
@@ -38,13 +42,7 @@ import net.minecraft.launchwrapper.LaunchClassLoader;
  * inject the FML coremod by hand if running under FML.
  */
 public class MixinTweaker implements ITweaker {
-    
-    /**
-     * Hello world
-     */
-    public MixinTweaker() {
-        MixinBootstrap.start();
-    }
+
     
     /* (non-Javadoc)
      * @see net.minecraft.launchwrapper.ITweaker#acceptOptions(java.util.List,
@@ -52,7 +50,6 @@ public class MixinTweaker implements ITweaker {
      */
     @Override
     public final void acceptOptions(List<String> args, File gameDir, File assetsDir, String profile) {
-        MixinBootstrap.doInit(CommandLineOptions.ofArgs(args));
     }
 
     /* (non-Javadoc)
@@ -61,7 +58,12 @@ public class MixinTweaker implements ITweaker {
      */
     @Override
     public final void injectIntoClassLoader(LaunchClassLoader classLoader) {
-        MixinBootstrap.inject();
+        Config.getAllConfigs().forEach((s, config) -> {
+            URL url = Launch.classLoader.getResource(s);
+            if (url != null) {
+                config.decorate(FabricUtil.KEY_MOD_ID, url.toString());
+            }
+        });
     }
 
     /* (non-Javadoc)

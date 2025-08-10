@@ -27,6 +27,7 @@ package org.spongepowered.asm.mixin.transformer;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.google.common.collect.ImmutableMap;
 import org.spongepowered.asm.logging.ILogger;
 import org.spongepowered.asm.launch.MixinInitialisationError;
 import org.spongepowered.asm.mixin.MixinEnvironment;
@@ -119,7 +120,6 @@ public class Config {
         this.config.decorate(key, value);
     }
 
-
     /* (non-Javadoc)
      * @see java.lang.Object#toString()
      */
@@ -142,6 +142,14 @@ public class Config {
     @Override
     public int hashCode() {
         return this.name.hashCode();
+    }
+
+    /**
+     * Gets a copy of all configs
+     * @return config map
+     */
+    public static Map<String, Config> getAllConfigs() {
+        return ImmutableMap.<String, Config>builder().putAll(allConfigs).build();
     }
 
     /**
