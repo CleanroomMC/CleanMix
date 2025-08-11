@@ -946,8 +946,8 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
         
         for (MixinInfo mixin : this.pendingMixins) {
             try {
-                mixin.parseTargets();
-                if (mixin.getTargetClasses().size() > 0) {
+                mixin.parseTargetsWithoutCheck();
+                if (!mixin.getTargetClasses().isEmpty()) {
                     for (String targetClass : mixin.getTargetClasses()) {
                         String targetClassName = targetClass.replace('/', '.');
                         this.mixinsFor(targetClassName).add(mixin);
