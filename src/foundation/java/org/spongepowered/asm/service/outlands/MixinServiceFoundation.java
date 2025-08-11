@@ -307,7 +307,7 @@ public class MixinServiceFoundation extends MixinServiceAbstract implements ICla
      */
     @Override
     public void checkEnv(Object bootSource) {
-        if (bootSource.getClass().getClassLoader() != Launch.class.getClassLoader()) {
+        if (bootSource.getClass().getClassLoader() != Launch.classLoader) {
             throw new MixinException("Attempted to init the mixin environment in the wrong classloader");
         }
     }
