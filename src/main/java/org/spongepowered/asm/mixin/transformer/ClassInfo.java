@@ -2157,6 +2157,17 @@ public final class ClassInfo {
         return ClassInfo.cache.get(className.replace('.', '/'));
     }
 
+    public static Map<String, String> getMixinsOfClass(String className) {
+        ClassInfo info = fromCache(className);
+        Map<String, String> map = new HashMap<>();
+        if (info != null) {
+            for (MixinInfo mixinInfo : info.appliedMixins) {
+                map.put(mixinInfo.getClassName(), mixinInfo.getConfig().getName());
+            }
+        }
+        return map;
+    }
+
     /**
      * Return a ClassInfo for the specified class type, but only if the class
      * information already exists in the cache. This prevents class loads in the
