@@ -24,6 +24,8 @@
  */
 package org.spongepowered.asm.mixin;
 
+import org.spongepowered.asm.service.outlands.MixinServiceFoundation;
+
 import static org.spongepowered.asm.mixin.MixinEnvironment.Phase.*;
 
 public final class PhaseDelegate {
@@ -34,7 +36,7 @@ public final class PhaseDelegate {
             case 0 -> MixinEnvironment.gotoPhase(INIT);
             case 1 -> MixinEnvironment.gotoPhase(DEFAULT);
             case 2 -> MixinEnvironment.gotoPhase(MOD);
-            default -> throw new RuntimeException("There's no next phase");
+            default -> MixinServiceFoundation.LOGGER.warn("There's no next phase");
         }
     }
 }

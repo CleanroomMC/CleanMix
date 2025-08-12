@@ -28,7 +28,10 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.JarURLConnection;
+import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -217,7 +220,14 @@ public final class MainAttributes {
      * @return MainAttributes instance
      */
     public static MainAttributes of(URI uri) {
-        System.out.println(uri);
+        if (uri.toString().startsWith("jar")) {
+            try {
+                JarURLConnection connection = (JarURLConnection) uri.toURL().openConnection();
+                uri = connection.getJarFileURL().toURI();
+            } catch (URISyntaxException | IOException e) {
+                e.printStackTrace();
+            }
+        }
         MainAttributes attributes = MainAttributes.instances.get(uri);
         if (attributes == null) {
             attributes = new MainAttributes(uri);

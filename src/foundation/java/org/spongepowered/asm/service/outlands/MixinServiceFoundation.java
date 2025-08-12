@@ -29,7 +29,6 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -41,6 +40,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.ClassNode;
+import org.spongepowered.asm.launch.GlobalProperties;
 import org.spongepowered.asm.launch.GlobalProperties.Keys;
 import org.spongepowered.asm.launch.platform.MainAttributes;
 import org.spongepowered.asm.launch.platform.container.ContainerHandleURI;
@@ -50,6 +50,7 @@ import org.spongepowered.asm.logging.ILogger;
 import org.spongepowered.asm.mixin.MixinEnvironment.CompatibilityLevel;
 import org.spongepowered.asm.mixin.MixinEnvironment.Phase;
 import org.spongepowered.asm.mixin.throwables.MixinException;
+import org.spongepowered.asm.mixin.transformer.ProxyTransformer;
 import org.spongepowered.asm.service.IClassBytecodeProvider;
 import org.spongepowered.asm.service.IClassProvider;
 import org.spongepowered.asm.service.IClassTracker;
@@ -73,6 +74,7 @@ import com.google.common.io.Closeables;
 import net.minecraft.launchwrapper.IClassNameTransformer;
 import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraft.launchwrapper.Launch;
+import top.outlands.foundation.TransformerDelegate;
 
 /**
  * Mixin service for launchwrapper
@@ -81,6 +83,12 @@ public class MixinServiceFoundation extends MixinServiceAbstract implements ICla
 
     
     public static final String MIXIN_TWEAKER_CLASS = MixinServiceAbstract.LAUNCH_PACKAGE + "MixinTweaker";
+    // Blackboard keys
+    public static final Keys BLACKBOARD_KEY_TWEAKCLASSES = Keys.of("TweakClasses");
+    public static final Keys BLACKBOARD_KEY_TWEAKS = Keys.of("Tweaks");
+
+    // Consts
+    private static final String STATE_TWEAKER = MixinServiceAbstract.MIXIN_PACKAGE + "EnvironmentStateTweaker";
 
     /**
      * Known re-entrant transformers, other re-entrant transformers will
@@ -93,7 +101,7 @@ public class MixinServiceFoundation extends MixinServiceAbstract implements ICla
     /**
      * Log4j2 logger
      */
-    private static final Logger logger = LogManager.getLogger();
+    public static final Logger LOGGER = LogManager.getLogger("MixinServiceFoundation");
 
     /**
      * Utility for reflecting into Launch ClassLoader
@@ -168,6 +176,10 @@ public class MixinServiceFoundation extends MixinServiceAbstract implements ICla
      */
     @Override
     public void init() {
+        List<String> tweakClasses = GlobalProperties.get(MixinServiceFoundation.BLACKBOARD_KEY_TWEAKCLASSES);
+        if (tweakClasses != null) {
+            tweakClasses.add(MixinServiceFoundation.STATE_TWEAKER);
+        }
         super.init();
     }
     
@@ -210,7 +222,7 @@ public class MixinServiceFoundation extends MixinServiceAbstract implements ICla
             for (URL url : sources) {
                 try {
                     URI uri = url.toURI();
-                    MixinServiceFoundation.logger.debug("Scanning {} for mixin tweaker", uri);
+                    MixinServiceFoundation.LOGGER.debug("Scanning {} for mixin tweaker", uri);
                     if (!"file".equals(uri.getScheme()) || !Files.toFile(uri).exists()) {
                         continue;
                     }
@@ -298,6 +310,7 @@ public class MixinServiceFoundation extends MixinServiceAbstract implements ICla
      */
     @Override
     public void beginPhase() {
+        TransformerDelegate.registerTransformer(new ProxyTransformer());
         this.delegatedTransformers = null;
     }
     
@@ -345,7 +358,7 @@ public class MixinServiceFoundation extends MixinServiceAbstract implements ICla
             }
             
             if (transformer instanceof IClassNameTransformer) {
-                MixinServiceFoundation.logger.debug("Found name transformer: {}", transformer.getClass().getName());
+                MixinServiceFoundation.LOGGER.debug("Found name transformer: {}", transformer.getClass().getName());
                 this.nameTransformer = (IClassNameTransformer)transformer;
             }
 
@@ -379,7 +392,7 @@ public class MixinServiceFoundation extends MixinServiceAbstract implements ICla
      * list just once per environment and cache the result.
      */
     private void buildTransformerDelegationList() {
-        MixinServiceFoundation.logger.debug("Rebuilding transformer delegation list:");
+        MixinServiceFoundation.LOGGER.debug("Rebuilding transformer delegation list:");
         this.delegatedTransformers = new ArrayList<>();
         for (ITransformer transformer : this.getTransformers()) {
             if (!(transformer instanceof ILegacyClassTransformer legacyTransformer)) {
@@ -395,14 +408,14 @@ public class MixinServiceFoundation extends MixinServiceAbstract implements ICla
                 }
             }
             if (include && !legacyTransformer.isDelegationExcluded()) {
-                MixinServiceFoundation.logger.debug("  Adding:    {}", transformerName);
+                MixinServiceFoundation.LOGGER.debug("  Adding:    {}", transformerName);
                 this.delegatedTransformers.add(legacyTransformer);
             } else {
-                MixinServiceFoundation.logger.debug("  Excluding: {}", transformerName);
+                MixinServiceFoundation.LOGGER.debug("  Excluding: {}", transformerName);
             }
         }
 
-        MixinServiceFoundation.logger.debug("Transformer delegation list created with {} entries", this.delegatedTransformers.size());
+        MixinServiceFoundation.LOGGER.debug("Transformer delegation list created with {} entries", this.delegatedTransformers.size());
     }
 
     /**
@@ -513,7 +526,7 @@ public class MixinServiceFoundation extends MixinServiceAbstract implements ICla
                 this.addTransformerExclusion(transformer.getName());
                 
                 this.lock.clear();
-                MixinServiceFoundation.logger.info("A re-entrant transformer '{}' was detected and will no longer process meta class data",
+                MixinServiceFoundation.LOGGER.info("A re-entrant transformer '{}' was detected and will no longer process meta class data",
                         transformer.getName());
             }
         }
@@ -537,7 +550,7 @@ public class MixinServiceFoundation extends MixinServiceAbstract implements ICla
         List<IClassTransformer> transformers = Launch.classLoader.getTransformers();
         for (IClassTransformer transformer : transformers) {
             if (transformer instanceof IClassNameTransformer) {
-                MixinServiceFoundation.logger.debug("Found name transformer: {}", transformer.getClass().getName());
+                MixinServiceFoundation.LOGGER.debug("Found name transformer: {}", transformer.getClass().getName());
                 this.nameTransformer = (IClassNameTransformer) transformer;
             }
         }
