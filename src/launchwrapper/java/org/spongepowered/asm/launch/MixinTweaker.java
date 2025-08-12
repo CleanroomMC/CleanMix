@@ -48,7 +48,7 @@ import org.spongepowered.asm.mixin.transformer.Config;
  * inject the FML coremod by hand if running under FML.
  */
 public class MixinTweaker implements ITweaker {
-    private static final Pattern fileNameFilter = Pattern.compile("[^a-zA-Z0-9]*");
+    private static final Pattern fileNameFilter = Pattern.compile("[^a-zA-Z0-9]+");
     private static final boolean isCleanroom = IClassTransformer.class.getClassLoader() instanceof LaunchClassLoader;
 
     /**

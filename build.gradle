@@ -219,7 +219,7 @@ dependencies {
         exclude module: 'jopt-simple'
     }
 
-    foundationImplementation ('top.outlands:foundation:0.15.3') {
+    foundationImplementation ('top.outlands:foundation:0.16.1') {
         transitive = false
     }
     foundationImplementation 'org.apache.logging.log4j:log4j-api:2.25.1'

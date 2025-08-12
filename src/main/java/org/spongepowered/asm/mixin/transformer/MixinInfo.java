@@ -910,6 +910,9 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
      * Run validation pass
      */
     void validate() {
+        if (this.state != null) {
+            return;
+        }
         if (this.pendingState == null) {
             throw new IllegalStateException("No pending validation state for " + this);
         }
