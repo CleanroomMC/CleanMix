@@ -81,8 +81,9 @@ public class MixinTweaker implements ITweaker {
         if (!isCleanroom) {
             MixinBootstrap.inject();
         }
-        if (Launch.blackboard.containsKey("MixinConfigs"))
-            Mixins.addConfigurations(((Set<String>)Launch.blackboard.get("MixinConfigs")).toArray(new String[0]));
+        if (Launch.blackboard.containsKey("MixinConfigs")) {
+            Mixins.addConfigurations(((Set<String>) Launch.blackboard.get("MixinConfigs")).toArray(new String[0]));
+        }
         Config.getAllConfigs().forEach((s, config) -> {
             URL url = Launch.classLoader.getResource(s);
             if (url != null) {
@@ -95,7 +96,8 @@ public class MixinTweaker implements ITweaker {
                         filename = filename.substring(0, filename.length() - 4);
 
                         config.decorate(FabricUtil.KEY_MOD_ID, fileNameFilter.matcher(filename).replaceAll("_"));
-                    } catch (Exception ignored) {
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
                 }
             }

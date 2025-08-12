@@ -56,7 +56,7 @@ public final class MainAttributes {
     /**
      * Manifest from jar
      */
-    protected final Attributes attributes;
+    private final Attributes attributes;
     
     private MainAttributes() {
         this.attributes = new Attributes();
@@ -217,6 +217,7 @@ public final class MainAttributes {
      * @return MainAttributes instance
      */
     public static MainAttributes of(URI uri) {
+        System.out.println(uri);
         MainAttributes attributes = MainAttributes.instances.get(uri);
         if (attributes == null) {
             attributes = new MainAttributes(uri);
