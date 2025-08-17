@@ -25,8 +25,11 @@
 package org.spongepowered.asm.mixin.transformer;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
+import com.google.common.collect.ImmutableMap;
 import org.spongepowered.asm.logging.ILogger;
 import org.spongepowered.asm.launch.MixinInitialisationError;
 import org.spongepowered.asm.mixin.MixinEnvironment;
@@ -55,6 +58,11 @@ public class Config {
      * Config name, used as identity for the purposes of {@link #equals}
      */
     private final String name;
+
+    /**
+     * Config file json blacklist
+     */
+    private static final Set<String> configBlackList = new HashSet<>();
     
     /**
      * Config 
@@ -131,6 +139,22 @@ public class Config {
     }
 
     /**
+     * Adds a config to blacklist
+     * @param config The config json to block
+     */
+    public static void blacklist(String config) {
+        configBlackList.add(config);
+    }
+
+    /**
+     * Gets a copy of all configs
+     * @return config map
+     */
+    public static Map<String, Config> getAllConfigs() {
+        return ImmutableMap.copyOf(allConfigs);
+    }
+
+    /**
      * Factory method, create a config from the specified config file and fail
      * over to the specified environment if no selector is present in the config
      *
@@ -154,6 +178,9 @@ public class Config {
      */
     @Deprecated
     public static Config create(String configFile, MixinEnvironment outer, IMixinConfigSource source) {
+        if (configBlackList.contains(configFile)) {
+            return null;
+        }
         Config config = Config.allConfigs.get(configFile);
         if (config != null) {
             return config;
