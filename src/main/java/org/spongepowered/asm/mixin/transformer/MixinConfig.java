@@ -912,7 +912,7 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
         }
         
         if (Strings.isNullOrEmpty(this.mixinPackage)) {
-            if (mixinClasses.size() > 0) {
+            if (!mixinClasses.isEmpty()) {
                 this.logger.error("{} declares mixin classes in {} but does not specify a package, {} orphaned mixins will not be loaded: {}",
                         this, collectionName, mixinClasses.size(), mixinClasses);
             }
