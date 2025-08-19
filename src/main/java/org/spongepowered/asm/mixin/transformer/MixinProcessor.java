@@ -336,6 +336,7 @@ class MixinProcessor {
             }
             if (mixins != null) {
                 mixins.forEach(MixinInfo::validate);
+                mixins.removeIf(mixinInfo -> !mixinInfo.shouldApplyMixin(false, name));
             }
 
             if (mixins != null) {

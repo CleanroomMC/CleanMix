@@ -107,7 +107,7 @@ public class Config {
     }
     
     /**
-     * Get the the config's parent
+     * Get the config's parent
      */
     public Config getParent() {
         MixinConfig parent = this.config.getParent();

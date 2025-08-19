@@ -956,10 +956,7 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
                 }
                 this.logger.error(message);
             }
-            
-            if (this.shouldApplyMixin(ignorePlugin, declaredTarget.name)) {
-                declaredTargets.add(declaredTarget);
-            }
+            declaredTargets.add(declaredTarget);
         }
         return declaredTargets;
     }
@@ -990,7 +987,7 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
      * @param targetName target class name
      * @return true if the mixin should be a pplied
      */
-    private boolean shouldApplyMixin(boolean ignorePlugin, String targetName) {
+    public boolean shouldApplyMixin(boolean ignorePlugin, String targetName) {
         Section pluginTimer = this.profiler.begin("plugin");
         boolean result = ignorePlugin || this.plugin.shouldApplyMixin(targetName, this.className);
         pluginTimer.end();
