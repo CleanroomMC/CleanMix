@@ -341,7 +341,7 @@ class MixinProcessor {
                 mixins.removeIf(mixinInfo -> !mixinInfo.shouldApplyMixin(false, name));
             }
 
-            if (mixins != null) {
+            if (mixins != null && !mixins.isEmpty()) {
                 // Re-entrance is "safe" as long as we don't need to apply any mixins, if there are mixins then we need to panic now
                 if (locked) {
                     ReEntrantTransformerError error = new ReEntrantTransformerError("Re-entrance error.");
