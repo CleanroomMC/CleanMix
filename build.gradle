@@ -608,7 +608,7 @@ remoteSign {
     useDummyForTesting = ENV.SIGNING_SERVER == null
     sign publishing.publications.developer
 }
-
+/*
 // A task to ensure that the version being released has not already been released.
 tasks.register('checkVersion') {
     doFirst {
@@ -620,5 +620,5 @@ tasks.register('checkVersion') {
         }
     }
 }
-
+*/
 // publish.mustRunAfter checkVersion
