@@ -28,31 +28,31 @@ package org.spongepowered.asm.mixin;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfig;
 import org.spongepowered.asm.mixin.injection.selectors.ISelectorContext;
 
-public final class FabricUtil {
-    public static final String KEY_MOD_ID = "fabric-modId";
-    public static final String KEY_COMPATIBILITY = "fabric-compat";
+public final class ModUtil {
+    public static final String KEY_MOD_ID = "modId";
+    public static final String KEY_FABRIC_COMPATIBILITY = "fabric-compat";
 
     // fabric mixin version compatibility boundaries, (major * 1000 + minor) * 1000 + patch
 
     /**
      * Fabric compatibility version 0.9.2
      */
-    public static final int COMPATIBILITY_0_9_2 = 9002; // 0.9.2+mixin.0.8.2 incompatible local variable handling
+    public static final int FABRIC_COMPATIBILITY_0_9_2 = 9002; // 0.9.2+mixin.0.8.2 incompatible local variable handling
 
     /**
      * Fabric compatibility version 0.10.0
      */
-    public static final int COMPATIBILITY_0_10_0 = 10000; // 0.10.0+mixin.0.8.4
+    public static final int FABRIC_COMPATIBILITY_0_10_0 = 10000; // 0.10.0+mixin.0.8.4
 
     /**
      * Fabric compatibility version 0.14.0
      */
-    public static final int COMPATIBILITY_0_14_0 = 14000; // 0.14.0+mixin.0.8.6
+    public static final int FABRIC_COMPATIBILITY_0_14_0 = 14000; // 0.14.0+mixin.0.8.6
 
     /**
-     * Latest compatibility version
+     * Latest Fabric compatibility version
      */
-    public static final int COMPATIBILITY_LATEST = COMPATIBILITY_0_14_0;
+    public static final int FABRIC_COMPATIBILITY_LATEST = FABRIC_COMPATIBILITY_0_14_0;
 
     public static String getModId(IMixinConfig config) {
         return getModId(config, "(unknown)");
@@ -67,7 +67,7 @@ public final class FabricUtil {
     }
 
     public static int getCompatibility(ISelectorContext context) {
-        return getDecoration(getConfig(context), KEY_COMPATIBILITY, COMPATIBILITY_LATEST);
+        return getDecoration(getConfig(context), KEY_FABRIC_COMPATIBILITY, FABRIC_COMPATIBILITY_LATEST);
     }
 
     private static IMixinConfig getConfig(ISelectorContext context) {
@@ -82,6 +82,6 @@ public final class FabricUtil {
         }
     }
 
-    private FabricUtil() {
+    private ModUtil() {
     }
 }

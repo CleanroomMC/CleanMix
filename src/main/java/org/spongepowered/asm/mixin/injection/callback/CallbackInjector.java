@@ -33,6 +33,7 @@ import java.util.Set;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.*;
+import org.spongepowered.asm.mixin.ModUtil;
 import org.spongepowered.asm.mixin.injection.Coerce;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.InjectionPoint;
@@ -466,7 +467,7 @@ public class CallbackInjector extends Injector {
     
     @Override
     protected void preInject(Target target, InjectionNode node) {
-        int fabricCompatibility = org.spongepowered.asm.mixin.FabricUtil.getCompatibility(info);
+        int fabricCompatibility = ModUtil.getCompatibility(info);
         String decorationKey = CallbackInjector.LOCALS_KEY + ":" + fabricCompatibility;
         if ((this.localCapture.isCaptureLocals() || this.localCapture.isPrintLocals()) && !node.hasDecoration(decorationKey)) {
             LocalVariableNode[] locals = Locals.getLocalsAt(this.classNode, target.method, node.getCurrentTarget(), fabricCompatibility);
@@ -486,7 +487,7 @@ public class CallbackInjector extends Injector {
      */
     @Override
     protected void inject(Target target, InjectionNode node) {
-        LocalVariableNode[] locals = node.<LocalVariableNode[]>getDecoration(CallbackInjector.LOCALS_KEY + ":" + org.spongepowered.asm.mixin.FabricUtil.getCompatibility(info));
+        LocalVariableNode[] locals = node.<LocalVariableNode[]>getDecoration(CallbackInjector.LOCALS_KEY + ":" + ModUtil.getCompatibility(info));
         this.inject(new Callback(this.methodNode, target, node, locals, this.localCapture.isCaptureLocals()));
     }
 

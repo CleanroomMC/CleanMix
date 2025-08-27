@@ -46,16 +46,10 @@ import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.InnerClassNode;
 import org.objectweb.asm.tree.InvokeDynamicInsnNode;
 import org.objectweb.asm.tree.MethodNode;
-import org.spongepowered.asm.mixin.Implements;
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.MixinEnvironment;
+import org.spongepowered.asm.mixin.*;
 import org.spongepowered.asm.mixin.MixinEnvironment.CompatibilityLevel;
 import org.spongepowered.asm.mixin.MixinEnvironment.Option;
 import org.spongepowered.asm.mixin.MixinEnvironment.Phase;
-import org.spongepowered.asm.mixin.Overwrite;
-import org.spongepowered.asm.mixin.Pseudo;
-import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfig;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 import org.spongepowered.asm.mixin.injection.Surrogate;
@@ -1388,7 +1382,7 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
      */
     @Override
     public String toString() {
-        return String.format("%s:%s from mod %s", this.parent.getName(), this.name, org.spongepowered.asm.mixin.FabricUtil.getModId(getConfig()));
+        return String.format("%s:%s from mod %s", this.parent.getName(), this.name, ModUtil.getModId(getConfig()));
     }
     
     static Variant getVariant(ClassNode classNode) {
