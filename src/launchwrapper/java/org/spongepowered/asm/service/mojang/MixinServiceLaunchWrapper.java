@@ -56,6 +56,7 @@ import org.spongepowered.asm.service.IClassProvider;
 import org.spongepowered.asm.service.IClassTracker;
 import org.spongepowered.asm.service.ILegacyClassTransformer;
 import org.spongepowered.asm.service.IMixinAuditTrail;
+import org.spongepowered.asm.service.IMixinInternal;
 import org.spongepowered.asm.service.ITransformer;
 import org.spongepowered.asm.service.ITransformerProvider;
 import org.spongepowered.asm.service.MixinServiceAbstract;
@@ -165,10 +166,6 @@ public class MixinServiceLaunchWrapper extends MixinServiceAbstract implements I
         if (command != null && command.contains("GradleStart")) {
             System.setProperty("mixin.env.remapRefMap", "true");
         }
-
-        if (MixinServiceLaunchWrapper.findInStackTrace("net.minecraft.launchwrapper.Launch", "launch") > 132) {
-            return Phase.DEFAULT;
-        }
         return Phase.PREINIT;
     }
     
@@ -191,10 +188,6 @@ public class MixinServiceLaunchWrapper extends MixinServiceAbstract implements I
      */
     @Override
     public void init() {
-        if (MixinServiceLaunchWrapper.findInStackTrace("net.minecraft.launchwrapper.Launch", "launch") < 4) {
-            MixinServiceLaunchWrapper.logger.error("MixinBootstrap.doInit() called during a tweak constructor!");
-        }
-
         List<String> tweakClasses = GlobalProperties.<List<String>>get(MixinServiceLaunchWrapper.BLACKBOARD_KEY_TWEAKCLASSES);
         if (tweakClasses != null) {
             tweakClasses.add(MixinServiceLaunchWrapper.STATE_TWEAKER);
@@ -610,6 +603,15 @@ public class MixinServiceLaunchWrapper extends MixinServiceAbstract implements I
         return this.getClassNode(className, this.getClassBytes(className, runTransformers), flags);
     }
 
+    @Override
+    public void offer(IMixinInternal internal) {
+        super.offer(internal);
+
+        if ("Refresh".equals(internal.toString())) {
+            this.delegatedTransformers = null;
+        }
+    }
+
     /**
      * Gets an ASM Tree for the supplied class bytecode
      * 
@@ -622,23 +624,6 @@ public class MixinServiceLaunchWrapper extends MixinServiceAbstract implements I
         ClassReader classReader = new MixinClassReader(classBytes, className);
         classReader.accept(classNode, flags);
         return classNode;
-    }
-
-    private static int findInStackTrace(String className, String methodName) {
-        Thread currentThread = Thread.currentThread();
-        
-        if (!"main".equals(currentThread.getName())) {
-            return 0;
-        }
-        
-        StackTraceElement[] stackTrace = currentThread.getStackTrace();
-        for (StackTraceElement s : stackTrace) {
-            if (className.equals(s.getClassName()) && methodName.equals(s.getMethodName())) {
-                return s.getLineNumber();
-            }
-        }
-        
-        return 0;
     }
     
 }

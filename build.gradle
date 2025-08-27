@@ -1,14 +1,3 @@
-// Gradle repositories and dependencies
-buildscript {
-    repositories {
-        gradlePluginPortal()
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.guardsquare:proguard-gradle:' + (JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_11) ? '7.5.0' : '7.1.0')
-    }
-}
-
 plugins {
     id "me.modmuss50.remotesign" version "0.5.0"
     id "com.gradleup.shadow"  version "9.0.0-rc1"
@@ -29,11 +18,11 @@ apply plugin: 'potemkin-modules'
 defaultTasks 'check', 'build'
 
 // Basic project information
-group = 'net.fabricmc'
-version = buildVersion + "+mixin." + upstreamMixinVersion
+group = 'com.cleanroommc'
+version = buildVersion
 
 base {
-    archivesName = 'sponge-mixin'
+    archivesName = 'cleanmix'
 }
 
 def ENV = System.getenv()
@@ -117,6 +106,11 @@ sourceSets {
     test {
         ext.modularityExcluded = true
     }
+    cleanroom {
+        compileClasspath += main.output
+        ext.languageVersion = 8
+        ext.compatibility = '1.8'
+    }
     launchwrapper {
         compileClasspath += main.output
         ext.languageVersion = 8
@@ -142,10 +136,6 @@ sourceSets {
         ext.languageVersion = 16
         ext.modularityExcluded = true // don't add ourselves
     }
-    foundation {
-        compileClasspath += main.output
-        ext.languageVersion = 21
-    }
     modularityDummy {}
 }
 
@@ -155,20 +145,12 @@ configurations {
     exampleImplementation       .extendsFrom implementation
     fernflowerImplementation    .extendsFrom implementation
     launchwrapperImplementation .extendsFrom implementation
-    foundationImplementation    .extendsFrom implementation
+    cleanroomImplementation     .extendsFrom launchwrapperImplementation
     agentImplementation         .extendsFrom implementation
     modlauncherImplementation   .extendsFrom implementation
     modlauncher9Implementation  .extendsFrom modlauncherImplementation
     modularityImplementation    .extendsFrom modlauncher9Implementation
     modularityCompileOnly       .extendsFrom compileOnly
-
-    proguard {
-        extendsFrom fernflowerImplementation
-        extendsFrom launchwrapperImplementation
-        extendsFrom foundationImplementation
-        extendsFrom modlauncherImplementation
-        extendsFrom compileClasspath
-    }
 }
 
 // Because Mixin aims to support a variety of environments, we have to be able to run with older versions of GSON and Guava that lack official module
@@ -369,7 +351,7 @@ task stagingJar(type: ShadowJar) {
         from it.output
     }
     configurations = [project.configurations.stagingJar]
-    
+
     // JAR manifest configuration
     manifest.attributes(
         "Built-By": System.properties['user.name'],
@@ -383,36 +365,17 @@ task stagingJar(type: ShadowJar) {
         "Can-Redefine-Classes": true,
         "Can-Retransform-Classes": true
     )
-    
+
     mergeServiceFiles()
     relocate 'com.google', 'org.spongepowered.include.com.google'
     archiveClassifier = "staging"
 }
 
-File proguardFile = file("build/libs/sponge-mixin-${version}.jar")
-
-task stagingProguardJar(type: proguard.gradle.ProGuardTask, dependsOn: stagingJar) {
-    doFirst {
-        configurations.proguard.resolve().forEach {
-            libraryjars it
-        }
-    }
-
-    outputs.upToDateWhen { false }
-
-    libraryjars JavaVersion.current().java9Compatible ? "${System.getProperty('java.home')}/jmods" : "${System.getProperty('java.home')}/lib/rt.jar"
-
-    injars stagingJar.archiveFile
-    outjars proguardFile
-    configuration file("proguard.conf")
-}
-build.dependsOn stagingProguardJar
-
 // Clear artifacts because jar will be there by default and we want to use staging jar instead
 configurations.archives.artifacts.clear()
 
 // generate shadow jar so we can use the AP standalone
-shadowJar  {
+shadowJar {
     from sourceSets.ap.output
     archiveClassifier = 'processor'
 }
@@ -468,14 +431,11 @@ publishing {
         developer(MavenPublication) { publication ->
             groupId = project.group
             artifactId = project.base.archivesName.get()
-            version = project.version
+            version = project.buildVersion
 
+            artifact stagingJar
             artifact sourceJar
             artifact javadocJar
-            artifact(proguardFile) {
-                builtBy stagingProguardJar
-                classifier = null
-            }
 
             // https://issues.gradle.org/browse/GRADLE-2966
             pom.withXml {
@@ -501,41 +461,33 @@ publishing {
             }
 
             pom {
-                name = "Fabric Mixin"
-                description = 'Fabric Mixin is a trait/mixin and bytecode weaving framework for Java using ASM.'
-                url = 'https://github.com/FabricMC/Mixin'
+                name = "CleanMix"
+                description = 'CleanMix is a trait/mixin and bytecode weaving framework for Java using ASM.'
+                url = 'https://github.com/CleanroomMC/CleanMix'
 
                 scm {
-                    connection = "scm:git:https://github.com/FabricMC/Mixin.git"
-                    developerConnection = "scm:git:git@github.com:FabricMC/Mixin.git"
-                    url = "https://github.com/FabricMC/Mixin"
+                    connection = "scm:git:https://github.com/CleanroomMC/CleanMix.git"
+                    developerConnection = "scm:git:git@github.com:CleanroomMC/CleanMix.git"
+                    url = "https://github.com/CleanroomMC/CleanMix"
                 }
 
                 issueManagement {
                     system = "GitHub"
-                    url = "https://github.com/FabricMC/Mixin/issues"
+                    url = "https://github.com/CleanroomMC/CleanMix/issues"
                 }
 
                 licenses {
                     license {
                         name = 'The MIT License'
-                        url = 'https://raw.githubusercontent.com/FabricMC/Mixin/main/LICENSE.txt'
+                        url = 'https://raw.githubusercontent.com/CleanroomMC/CleanMix/main/LICENSE.txt'
                     }
                 }
 
                 developers {
-                    // Et. al. that arent in the fabric org on maven central
-
                     developer {
-                        id = "modmuss50"
-                        name = "modmuss50"
-                        email = "modmuss50@fabricmc.net"
-                    }
-
-                    developer {
-                        id = "sfPlayer"
-                        name = "Player"
-                        email = "player@fabricmc.net"
+                        id = "rongmario"
+                        name = "rongmario"
+                        email = "rongmario@proton.me"
                     }
                 }
             }
@@ -567,7 +519,7 @@ remoteSign {
 // A task to ensure that the version being released has not already been released.
 task checkVersion {
     doFirst {
-        def xml = new URL("https://maven.fabricmc.net/net/fabricmc/sponge-mixin/maven-metadata.xml").text
+        // def xml = new URL("https://maven.fabricmc.net/net/fabricmc/sponge-mixin/maven-metadata.xml").text
         def metadata = new XmlSlurper().parseText(xml)
         def versions = metadata.versioning.versions.version*.text();
         if (versions.contains(version)) {

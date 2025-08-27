@@ -60,6 +60,7 @@ import org.spongepowered.asm.mixin.transformer.throwables.MixinTransformerError;
 import org.spongepowered.asm.mixin.transformer.throwables.ReEntrantTransformerError;
 import org.spongepowered.asm.service.IMixinAuditTrail;
 import org.spongepowered.asm.service.IMixinService;
+import org.spongepowered.asm.service.MixinInternalNote;
 import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.util.Annotations;
 import org.spongepowered.asm.util.PrettyPrinter;
@@ -479,6 +480,12 @@ class MixinProcessor {
             targets.addAll(config.reloadMixin(mixinClass, classNode));
         }
         return targets;
+    }
+
+    public void refresh() {
+        this.select(MixinEnvironment.getCurrentEnvironment());
+
+        this.service.offer(new MixinInternalNote("Refresh"));
     }
 
     private void checkSelect(MixinEnvironment environment) {
