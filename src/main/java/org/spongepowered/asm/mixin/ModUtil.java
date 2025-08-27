@@ -32,6 +32,8 @@ public final class ModUtil {
     public static final String KEY_MOD_ID = "modId";
     public static final String KEY_FABRIC_COMPATIBILITY = "fabric-compat";
 
+    public static final String UNKNOWN_MOD_ID = "unknown";
+
     // fabric mixin version compatibility boundaries, (major * 1000 + minor) * 1000 + patch
 
     /**
@@ -55,7 +57,7 @@ public final class ModUtil {
     public static final int FABRIC_COMPATIBILITY_LATEST = FABRIC_COMPATIBILITY_0_14_0;
 
     public static String getModId(IMixinConfig config) {
-        return getModId(config, "(unknown)");
+        return getModId(config, UNKNOWN_MOD_ID);
     }
 
     public static String getModId(IMixinConfig config, String defaultValue) {
@@ -63,7 +65,7 @@ public final class ModUtil {
     }
     
     public static String getModId(ISelectorContext context) {
-        return getDecoration(getConfig(context), KEY_MOD_ID, "(unknown)");
+        return getDecoration(getConfig(context), KEY_MOD_ID, UNKNOWN_MOD_ID);
     }
 
     public static int getCompatibility(ISelectorContext context) {
