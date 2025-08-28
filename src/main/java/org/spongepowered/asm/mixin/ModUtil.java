@@ -34,7 +34,7 @@ public final class ModUtil {
 
     public static final String UNKNOWN_MOD_ID = "unknown";
 
-    // fabric mixin version compatibility boundaries, (major * 1000 + minor) * 1000 + patch
+    // Fabric mixin version compatibility boundaries, (major * 1000 + minor) * 1000 + patch
 
     /**
      * Fabric compatibility version 0.9.2
