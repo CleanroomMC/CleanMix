@@ -166,9 +166,11 @@ potemkinModules {
 dependencies {
     def guava = 'com.google.guava:guava:21.0' // from mc1.12 onwards
     def gson = 'com.google.code.gson:gson:2.2.4'
+    def ff = 'org.jetbrains:intellij-fernflower:1.0.0.9'
 
     stagingJar guava
     stagingJar gson
+    stagingJar ff
 
     implementation guava
     implementation 'com.google.code.gson:gson:2.2.4'
@@ -185,7 +187,7 @@ dependencies {
     apImplementation gson
 
     // Fernflower decompiler
-    fernflowerImplementation 'org.jetbrains:intellij-fernflower:1.0.0.9'
+    fernflowerImplementation ff
 
     // LegacyLauncher service
     launchwrapperImplementation ('net.minecraft:launchwrapper:1.11') {
