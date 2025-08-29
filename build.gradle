@@ -370,7 +370,6 @@ task stagingJar(type: ShadowJar) {
 
     mergeServiceFiles()
     relocate 'com.google', 'org.spongepowered.include.com.google'
-    archiveClassifier = "staging"
 }
 
 // Clear artifacts because jar will be there by default and we want to use staging jar instead
@@ -438,6 +437,7 @@ publishing {
             artifact stagingJar
             artifact sourceJar
             artifact javadocJar
+            artifact shadowJar
 
             // https://issues.gradle.org/browse/GRADLE-2966
             pom.withXml {
