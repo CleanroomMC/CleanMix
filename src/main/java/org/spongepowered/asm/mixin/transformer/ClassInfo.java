@@ -1002,8 +1002,8 @@ public final class ClassInfo {
     /**
      * Get all mixins which target this class
      */
-    Set<MixinInfo> getMixins() {
-        return this.isMixin ? Collections.<MixinInfo>emptySet() : Collections.<MixinInfo>unmodifiableSet(this.mixins);
+    public Set<IMixinInfo> getMixins() {
+        return this.isMixin ? Collections.<IMixinInfo>emptySet() : Collections.<IMixinInfo>unmodifiableSet(this.mixins);
     }
 
     /**
