@@ -291,6 +291,10 @@ final class MixinTransformer extends TreeTransformer implements IMixinTransforme
     public synchronized boolean generateClass(MixinEnvironment environment, String name, ClassNode classNode) {
         return this.generator.generateClass(environment, name, classNode);
     }
+
+    void refresh() {
+        this.processor.refresh();
+    }
     
     /**
      * You need to ask yourself why you're reading this comment  
