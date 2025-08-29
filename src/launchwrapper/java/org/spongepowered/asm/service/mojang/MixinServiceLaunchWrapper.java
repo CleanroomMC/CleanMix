@@ -209,14 +209,23 @@ public class MixinServiceLaunchWrapper extends MixinServiceAbstract implements I
     
     @Override
     public IContainerHandle getPrimaryContainer() {
-        URI uri = null;
+
         try {
-            uri = this.getClass().getProtectionDomain().getCodeSource().getLocation().toURI();
-            if (uri != null) {
-                return new ContainerHandleURI(uri);
+            // Try MixinBooter first
+            return new ContainerHandleURI(Class.forName("zone.rong.mixinbooter.MixinBooterPlugin", false, Launch.classLoader.getClass().getClassLoader())
+                    .getProtectionDomain()
+                    .getCodeSource()
+                    .getLocation()
+                    .toURI());
+        } catch (ClassNotFoundException | URISyntaxException e1) {
+            e1.printStackTrace();
+
+            try {
+                // Fallback to mixin's own jar
+                return new ContainerHandleURI(this.getClass().getProtectionDomain().getCodeSource().getLocation().toURI());
+            } catch (URISyntaxException e2) {
+                e2.printStackTrace();
             }
-        } catch (URISyntaxException ex) {
-            ex.printStackTrace();
         }
         return new ContainerHandleVirtual(this.getName());
     }
