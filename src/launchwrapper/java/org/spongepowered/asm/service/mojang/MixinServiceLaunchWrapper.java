@@ -229,38 +229,7 @@ public class MixinServiceLaunchWrapper extends MixinServiceAbstract implements I
         }
         return new ContainerHandleVirtual(this.getName());
     }
-    
-    @Override
-    public Collection<IContainerHandle> getMixinContainers() {
-        Builder<IContainerHandle> list = ImmutableList.<IContainerHandle>builder();
-        this.getContainersFromClassPath(list);
-        this.getContainersFromAgents(list);
-        return list.build();
-    }
 
-    private void getContainersFromClassPath(Builder<IContainerHandle> list) {
-        // We know this is deprecated, it works for LW though, so access directly
-        URL[] sources = this.getClassPath();
-        if (sources != null) {
-            for (URL url : sources) {
-                try {
-                    URI uri = url.toURI();
-                    MixinServiceLaunchWrapper.logger.debug("Scanning {} for mixin tweaker", uri);
-                    if (!"file".equals(uri.getScheme()) || !Files.toFile(uri).exists()) {
-                        continue;
-                    }
-                    MainAttributes attributes = MainAttributes.of(uri);
-                    String tweaker = attributes.get(Constants.ManifestAttributes.TWEAKER);
-                    if (MixinServiceLaunchWrapper.MIXIN_TWEAKER_CLASS.equals(tweaker)) {
-                        list.add(new ContainerHandleURI(uri));
-                    }
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                } 
-            }
-        }
-    }
-    
     /* (non-Javadoc)
      * @see org.spongepowered.asm.service.IMixinService#getClassProvider()
      */
