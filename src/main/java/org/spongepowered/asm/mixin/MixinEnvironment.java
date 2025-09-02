@@ -585,11 +585,11 @@ public final class MixinEnvironment implements ITokenProvider {
             this.depth = depth;
         }
         
-        Option getParent() {
+        public Option getParent() {
             return this.parent;
         }
-        
-        String getProperty() {
+
+        public String getProperty() {
             return this.property;
         }
         
