@@ -114,6 +114,10 @@ public class Config {
         return parent != null ? parent.getHandle() : null;
     }
 
+    public IMixinConfigSource getSource() {
+        return this.config.getSource() != null ? this.config.getSource() : this.getParent().config.getSource();
+    }
+
     /* (non-Javadoc)
      * @see java.lang.Object#toString()
      */
