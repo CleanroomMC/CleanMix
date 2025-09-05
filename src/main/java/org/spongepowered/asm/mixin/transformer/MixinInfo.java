@@ -880,6 +880,10 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
         }
     }
 
+    void parseTargetsWithoutCheck() {
+        this.targetClassNames.addAll(Lists.transform(this.declaredTargets, declaredTarget -> declaredTarget.name));
+    }
+
     /**
      * Parse the declared targets from the annotation into ClassInfo instances
      * and perform initial validation of each target
@@ -887,6 +891,7 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
     void parseTargets() {
         try {
             this.targetClasses.addAll(this.readTargetClasses(this.declaredTargets));
+            this.targetClassNames.clear();
             this.targetClassNames.addAll(Lists.transform(this.targetClasses, Functions.toStringFunction()));
         } catch (InvalidMixinException ex) {
             throw ex;
@@ -902,7 +907,7 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
         if (this.pendingState == null) {
             throw new IllegalStateException("No pending validation state for " + this);
         }
-        
+        parseTargets();
         try {
             this.pendingState.validate(this.type, this.targetClasses);
             this.state = this.pendingState;
