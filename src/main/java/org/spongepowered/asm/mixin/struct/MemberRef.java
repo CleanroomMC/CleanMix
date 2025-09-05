@@ -229,7 +229,7 @@ public abstract class MemberRef {
             if (tag == 0) {
                 throw new MixinTransformerError("Invalid opcode " + Bytecode.getOpcodeName(opcode) + " for method handle " + this.handle + ".");
             }
-            this.setHandle(tag, this.handle.getOwner(), this.handle.getName(), this.handle.getDesc(), this.handle.isInterface());
+            this.setHandle(tag, this.handle.getOwner(), this.handle.getName(), this.handle.getDesc());
         }
 
         @Override
@@ -239,7 +239,7 @@ public abstract class MemberRef {
 
         @Override
         public void setOwner(String owner) {
-            this.setHandle(this.handle.getTag(), owner, this.handle.getName(), this.handle.getDesc(), this.handle.isInterface());
+            this.setHandle(this.handle.getTag(), owner, this.handle.getName(), this.handle.getDesc());
         }
 
         @Override
@@ -249,7 +249,7 @@ public abstract class MemberRef {
 
         @Override
         public void setName(String name) {
-            this.setHandle(this.handle.getTag(), this.handle.getOwner(), name, this.handle.getDesc(), this.handle.isInterface());
+            this.setHandle(this.handle.getTag(), this.handle.getOwner(), name, this.handle.getDesc());
         }
 
         @Override
@@ -259,11 +259,15 @@ public abstract class MemberRef {
 
         @Override
         public void setDesc(String desc) {
-            this.setHandle(this.handle.getTag(), this.handle.getOwner(), this.handle.getName(), desc, this.handle.isInterface());
+            this.setHandle(this.handle.getTag(), this.handle.getOwner(), this.handle.getName(), desc);
         }
 
-        public void setHandle(int tag, String owner, String name, String desc, boolean isInterface) {
-            this.handle = new org.objectweb.asm.Handle(tag, owner, name, desc, isInterface);
+        public void setHandle(int tag, String owner, String name, String desc) {
+            try {
+                this.handle = new org.objectweb.asm.Handle(tag, owner, name, desc, this.handle.isInterface());
+            } catch (NoSuchMethodError e) {
+                this.handle = new org.objectweb.asm.Handle(tag, owner, name, desc);
+            }
         }
 
     }
