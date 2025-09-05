@@ -115,7 +115,7 @@ public class Config {
     }
 
     public IMixinConfigSource getSource() {
-        return this.config.getSource() != null ? this.config.getSource() : this.getParent().config.getSource();
+        return this.config.getSource() != null ? this.config.getSource() : this.getParent() == null ? null : this.getParent().config.getSource();
     }
 
     /* (non-Javadoc)
