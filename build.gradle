@@ -339,7 +339,7 @@ if (JavaVersion.current().isJava8Compatible()) {
 }
 
 task stagingJar(type: ShadowJar) {
-    sourceSets.findAll { !(it.name =~ /example|test|modularityDummy/) }.each {
+    sourceSets.findAll { !(it.name =~ /ap|example|modlauncher|modularity|test|modularityDummy/) }.each {
         from it.output
     }
     configurations = [project.configurations.stagingJar]
