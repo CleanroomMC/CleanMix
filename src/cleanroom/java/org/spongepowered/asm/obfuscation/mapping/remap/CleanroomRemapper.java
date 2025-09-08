@@ -22,7 +22,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.asm.remapper;
+package org.spongepowered.asm.obfuscation.mapping.remap;
 
 import org.objectweb.asm.commons.Remapper;
 import org.spongepowered.asm.logging.ILogger;
