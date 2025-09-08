@@ -163,11 +163,11 @@ dependencies {
     def ff = 'org.jetbrains:intellij-fernflower:1.0.0.9'
 
     stagingJar guava
-    stagingJar gson
+    // stagingJar gson
     stagingJar ff
 
     implementation guava
-    implementation 'com.google.code.gson:gson:2.2.4'
+    implementation gson
     if (Float.parseFloat(asmVersion) < 6) {
         implementation "org.ow2.asm:asm-debug-all:$asmVersion"
     }
