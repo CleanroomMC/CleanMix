@@ -29,7 +29,7 @@ import org.objectweb.asm.tree.FieldInsnNode;
 import org.objectweb.asm.tree.InsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.VarInsnNode;
-import org.spongepowered.asm.mixin.MixinEnvironment.Option;
+import org.spongepowered.asm.mixin.MixinEnvironment;
 import org.spongepowered.asm.mixin.gen.throwables.InvalidAccessorException;
 import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.transformer.ClassInfo.Method;
@@ -63,14 +63,23 @@ public class AccessorGeneratorFieldSetter extends AccessorGeneratorField {
         
         Method method = this.info.getClassInfo().findMethod(this.info.getMethod());
         this.mutable = method.isDecoratedMutable();
-        if (this.mutable || !Bytecode.hasFlag(this.targetField, Opcodes.ACC_FINAL)) {
+        if (this.mutable) {
             return;
         }
-        
-        if (this.info.getMixin().getOption(Option.DEBUG_VERBOSE)) {
-            MixinService.getService().getLogger("mixin").warn("{} for final field {}::{} is not @Mutable", this.info,
-                    ((MixinTargetContext)this.info.getMixin()).getTarget(), this.targetField.name);
-        }                    
+        if (Bytecode.hasFlag(this.targetField, Opcodes.ACC_FINAL)) {
+            // ADDED BY CLEANMIX
+            if (this.info.getMixin().getOption(MixinEnvironment.Option.AUTO_MUTATE_FINAL_SETTERS)) {
+                this.mutable = true;
+                MixinService.getService().getLogger("mixin")
+                        .warn("{} for final field {}::{} was not marked with @Mutable. CleanMix has rectified this," +
+                                        "though it should be fixed from the mixin author's side",
+                                this.info, ((MixinTargetContext)this.info.getMixin()).getTarget(), this.targetField.name);
+            } else {
+                // CHANGED BY CLEANMIX (higher level of warning without debug for non @Mutable @Accessor setters for final fields
+                MixinService.getService().getLogger("mixin").fatal("{} for final field {}::{} is not @Mutable.",
+                                this.info, ((MixinTargetContext)this.info.getMixin()).getTarget(), this.targetField.name);
+            }
+        }
     }
 
     /* (non-Javadoc)

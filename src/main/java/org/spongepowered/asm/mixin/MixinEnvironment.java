@@ -41,6 +41,7 @@ import org.spongepowered.asm.launch.MixinBootstrap;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.extensibility.IEnvironmentTokenProvider;
+import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.throwables.MixinException;
@@ -434,7 +435,15 @@ public final class MixinEnvironment implements ITokenProvider {
          * helps cases when the method is access transformed or class
          * transformed to have its visibility lifted
          */
-        CONFORM_VISIBILITY("conformVisibility", "true", true);
+        CONFORM_VISIBILITY("conformVisibility", "true", true),
+
+        /**
+         * <strong>ADDED BY CLEANMIX</strong>
+         * {@link Mutable} should be applied on any setters in {@link Accessor}s,
+         * this option auto mutates the final fields if any accessor setters are linked to it,
+         * but a warning would be posted nevertheless
+         */
+        AUTO_MUTATE_FINAL_SETTERS("autoMutateFinalSetters", "true", true);
         
         /**
          * Type of inheritance for options
