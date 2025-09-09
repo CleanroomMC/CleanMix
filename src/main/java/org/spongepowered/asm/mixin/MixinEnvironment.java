@@ -426,7 +426,15 @@ public final class MixinEnvironment implements ITokenProvider {
          * with {@link ClassReader#EXPAND_FRAMES} flag which restores the
          * behaviour from versions 0.8.6 and below, newer versions default to 0.
          */
-        CLASSREADER_EXPAND_FRAMES(Option.TUNABLE, Inherit.INDEPENDENT, "classReaderExpandFrames", true, "false");
+        CLASSREADER_EXPAND_FRAMES(Option.TUNABLE, Inherit.INDEPENDENT, "classReaderExpandFrames", true, "false"),
+
+        /**
+         * <strong>ADDED BY CLEANMIX</strong>
+         * Allow overwrites to conform to a higher visibility than the one expected,
+         * helps cases when the method is access transformed or class
+         * transformed to have its visibility lifted
+         */
+        CONFORM_VISIBILITY("conformVisibility", "true", true);
         
         /**
          * Type of inheritance for options
@@ -500,7 +508,7 @@ public final class MixinEnvironment implements ITokenProvider {
         final int depth;
 
         private Option(String property) {
-            this(null, property, true);
+            this((Option) null, property, true);
         }
         
         private Option(Inherit inheritance, String property) {
@@ -512,13 +520,17 @@ public final class MixinEnvironment implements ITokenProvider {
         }
 
         private Option(String property, boolean flag) {
-            this(null, property, flag);
+            this((Option) null, property, flag);
         }
 
         private Option(String property, String defaultStringValue) {
             this(null, Inherit.INDEPENDENT, property, false, defaultStringValue);
         }
-        
+
+        private Option(String property, String defaultStringValue, boolean isFlag) {
+            this(null, Inherit.INDEPENDENT, property, isFlag, defaultStringValue);
+        }
+
         private Option(Option parent, String property) {
             this(parent, Inherit.INHERIT, property, true);
         }

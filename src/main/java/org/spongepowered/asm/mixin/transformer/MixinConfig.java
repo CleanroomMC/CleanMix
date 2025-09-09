@@ -140,13 +140,13 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
     static class OverwriteOptions {
         
         /**
+         * <strong>CHANGED BY CLEANMIX: DEFAULT OF PROPERTY DEPENDS ON {@link MixinEnvironment.Option#CONFORM_VISIBILITY}</strong>
          * Flag which specifies whether an overwrite with lower visibility than
          * its target is allowed to be applied, the visibility will be upgraded
          * if the target method is nonprivate but the merged method is private.
-         * <strong>CLEANROOM CHANGE: true by default</strong>
          */
         @SerializedName("conformVisibility")
-        boolean conformAccessModifiers = true;
+        boolean conformAccessModifiers;
         
         /**
          * Changes the default always-overwrite behaviour of mixins to
@@ -476,6 +476,7 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
         if (this.overwriteOptions == null) {
             this.overwriteOptions = new OverwriteOptions();
         }
+        this.overwriteOptions.conformAccessModifiers |= this.env.getOption(Option.CONFORM_VISIBILITY);
         
         return this.postInit();
     }
