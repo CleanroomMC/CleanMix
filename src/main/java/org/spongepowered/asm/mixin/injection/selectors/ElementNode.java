@@ -25,6 +25,7 @@
 package org.spongepowered.asm.mixin.injection.selectors;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
@@ -42,6 +43,7 @@ import org.objectweb.asm.tree.MethodNode;
 import org.spongepowered.asm.util.Handles;
 
 import com.google.common.base.Strings;
+import org.spongepowered.asm.util.asm.ASM;
 
 /**
  * Wrapper for all node types supported by {@link ITargetSelector target
@@ -499,7 +501,12 @@ public abstract class ElementNode<TNode> {
         public ElementNodeIterable(Iterable<AbstractInsnNode> iterable, boolean filterDynamic) {
             this.iterable = iterable;
             this.filterDynamic = filterDynamic;
-}
+        }
+
+        public ElementNodeIterable(InsnList insns, boolean filterDynamic) {
+            this.iterable = ASM.isAtLeastVersion(7, 2) ? insns : Arrays.asList(insns.toArray());
+            this.filterDynamic = filterDynamic;
+        }
 
         @Override
         public Iterator<ElementNode<AbstractInsnNode>> iterator() {
