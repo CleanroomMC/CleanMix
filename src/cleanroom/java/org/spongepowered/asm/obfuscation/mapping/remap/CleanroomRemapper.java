@@ -41,33 +41,33 @@ public class CleanroomRemapper<T extends Remapper & Unmapper> implements IRemapp
 
     @Override
     public String mapMethodName(String owner, String name, String desc) {
-        this.logger.debug("{} is remapping method {}{} for {}", this, name, desc, owner);
+        this.logger.debug("Remapping method {}{} for {}", name, desc, owner);
         String newName = this.remapper.mapMethodName(owner, name, desc);
         if (!newName.equals(name)) {
             return newName;
         }
         String obfOwner = this.unmap(owner);
         String obfDesc = this.unmapDesc(desc);
-        this.logger.debug("{} is remapping obfuscated method {}{} for {}", this, name, obfDesc, obfOwner);
+        this.logger.debug("Remapping obfuscated method {}{} for {}", name, obfDesc, obfOwner);
         return this.remapper.mapMethodName(obfOwner, name, obfDesc);
     }
 
     @Override
     public String mapFieldName(String owner, String name, String desc) {
-        this.logger.debug("{} is remapping field {}{} for {}", this, name, desc, owner);
+        this.logger.debug("Remapping field {}{} for {}", name, desc, owner);
         String newName = this.remapper.mapFieldName(owner, name, desc);
         if (!newName.equals(name)) {
             return newName;
         }
         String obfOwner = this.unmap(owner);
         String obfDesc = this.unmapDesc(desc);
-        this.logger.debug("{} is remapping obfuscated field {}{} for {}", this, name, obfDesc, obfOwner);
+        this.logger.debug("Remapping obfuscated field {}{} for {}", name, obfDesc, obfOwner);
         return this.remapper.mapFieldName(obfOwner, name, obfDesc);
     }
 
     @Override
     public String map(String typeName) {
-        this.logger.debug("{} is remapping class {}", this, typeName);
+        this.logger.debug("Remapping class {}", typeName);
         return this.remapper.map(typeName);
     }
 
