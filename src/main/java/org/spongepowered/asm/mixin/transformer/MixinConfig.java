@@ -175,9 +175,10 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
         public abstract void onPrepare(MixinInfo mixin);
 
         /**
-         * Called when a mixin has completed post-initialisation
+         * <strong>CHANGED BY CLEANMIX: CALL MOVED TO JUST BEFORE MIXIN IS APPLIED</strong>
+         * Called when a mixin has completed post-initialisation and is about to be applied
          * 
-         * @param mixin mixin which completed postinit
+         * @param mixin mixin which completed postinit and is about to be applied
          */
         public abstract void onInit(MixinInfo mixin);
 
@@ -355,7 +356,7 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
      */
     private final transient int order = MixinConfig.configOrder++;
     
-    private final transient List<IListener> listeners = new ArrayList<IListener>();
+    final transient List<IListener> listeners = new ArrayList<IListener>();
     
 //    /**
 //     * Phase selector
@@ -879,31 +880,37 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
             List<String> pluginMixins = this.plugin.getMixins();
             this.prepareMixins("companion plugin", pluginMixins, true, extensions);
         }
-        
-        for (Iterator<MixinInfo> iter = this.mixins.iterator(); iter.hasNext();) {
-            MixinInfo mixin = iter.next();
-            try {
-                for (IListener listener : this.listeners) {
-                    listener.onInit(mixin);
-                }
-            } catch (InvalidMixinException ex) {
-                this.logger.error(ex.getMixin() + ": " + ex.getMessage(), ex);
-                this.removeMixin(mixin);
-                iter.remove();
-            } catch (Exception ex) {
-                this.logger.error(ex.getMessage(), ex);
-                this.removeMixin(mixin);
-                iter.remove();
-            }
-        }
+
+        // See: MixinInfo#validate
+//        for (Iterator<MixinInfo> iter = this.mixins.iterator(); iter.hasNext();) {
+//            MixinInfo mixin = iter.next();
+//            try {
+//                for (IListener listener : this.listeners) {
+//                    listener.onInit(mixin);
+//                }
+//            } catch (InvalidMixinException ex) {
+//                this.logger.error(ex.getMixin() + ": " + ex.getMessage(), ex);
+//                this.removeMixin(mixin);
+//                iter.remove();
+//            } catch (Exception ex) {
+//                this.logger.error(ex.getMessage(), ex);
+//                this.removeMixin(mixin);
+//                iter.remove();
+//            }
+//        }
     }
 
-    private void removeMixin(MixinInfo remove) {
+    void removeMixin(MixinInfo remove) {
         for (List<MixinInfo> mixinsFor : this.mixinMapping.values()) {
             for (Iterator<MixinInfo> iter = mixinsFor.iterator(); iter.hasNext();) {
                 if (remove == iter.next()) {
                     iter.remove();
                 }
+            }
+        }
+        for (Iterator<MixinInfo> iter = this.mixins.iterator(); iter.hasNext();) {
+            if (remove == iter.next()) {
+                iter.remove();
             }
         }
     }

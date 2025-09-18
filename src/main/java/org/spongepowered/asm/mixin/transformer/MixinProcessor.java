@@ -289,6 +289,19 @@ class MixinProcessor {
         boolean transformed = false;
         
         try {
+            SortedSet<MixinInfo> mixins = new TreeSet<MixinInfo>();
+            for (MixinConfig config : this.configs) {
+                if (config.hasMixinsFor(name)) {
+                    // Get and sort mixins for the class
+                    for (MixinInfo mixin : config.getMixinsFor(name)) {
+                        if (mixin.shouldApplyMixin(false, name)) {
+                            mixin.validate();
+                            mixins.add(mixin);
+                        }
+                    }
+                }
+            }
+
             ProcessResult result = this.coprocessors.process(name, targetClassNode);
             transformed |= result.isTransformed();
             
@@ -313,7 +326,7 @@ class MixinProcessor {
                     }
                     continue;
                 }
-            }                
+            }
 
             if (packageOwnedByConfig != null) {
                 // AMS - Temp passthrough for injection points and dynamic selectors. Moving to service in 0.9
@@ -325,23 +338,7 @@ class MixinProcessor {
                 throw new IllegalClassLoadError(this.getInvalidClassError(name, targetClassNode, packageOwnedByConfig));
             }
 
-            SortedSet<MixinInfo> mixins = null;
-            for (MixinConfig config : this.configs) {
-                if (config.hasMixinsFor(name)) {
-                    if (mixins == null) {
-                        mixins = new TreeSet<MixinInfo>();
-                    }
-                    
-                    // Get and sort mixins for the class
-                    mixins.addAll(config.getMixinsFor(name));
-                }
-            }
-            if (mixins != null) {
-                mixins.forEach(MixinInfo::validate);
-                mixins.removeIf(mixinInfo -> !mixinInfo.shouldApplyMixin(false, name));
-            }
-
-            if (mixins != null && !mixins.isEmpty()) {
+            if (!mixins.isEmpty()) {
                 // Re-entrance is "safe" as long as we don't need to apply any mixins, if there are mixins then we need to panic now
                 if (locked) {
                     ReEntrantTransformerError error = new ReEntrantTransformerError("Re-entrance error.");

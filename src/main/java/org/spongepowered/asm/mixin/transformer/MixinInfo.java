@@ -914,6 +914,15 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
         try {
             this.pendingState.validate(this.type, this.targetClasses);
             this.state = this.pendingState;
+
+            try {
+                for (MixinConfig.IListener listener : this.parent.listeners) {
+                    listener.onInit(this);
+                }
+            } catch (Exception e) {
+                this.logger.error(e instanceof InvalidMixinException ? ((InvalidMixinException) e).getMixin() + ": " + e.getMessage() : e.getMessage(), e);
+                this.parent.removeMixin(this);
+            }
         } finally {
             this.pendingState = null;
         }
