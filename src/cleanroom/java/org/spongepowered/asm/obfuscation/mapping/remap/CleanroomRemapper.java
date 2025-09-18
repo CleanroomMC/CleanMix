@@ -42,6 +42,9 @@ public class CleanroomRemapper<T extends Remapper & Unmapper> implements IRemapp
     @Override
     public String mapMethodName(String owner, String name, String desc) {
         this.logger.debug("Remapping method {}{} for {}", name, desc, owner);
+        if (owner == null || name == null || desc == null) {
+            return name;
+        }
         String newName = this.remapper.mapMethodName(owner, name, desc);
         if (!newName.equals(name)) {
             return newName;
@@ -55,6 +58,9 @@ public class CleanroomRemapper<T extends Remapper & Unmapper> implements IRemapp
     @Override
     public String mapFieldName(String owner, String name, String desc) {
         this.logger.debug("Remapping field {}{} for {}", name, desc, owner);
+        if (owner == null || name == null || desc == null) {
+            return name;
+        }
         String newName = this.remapper.mapFieldName(owner, name, desc);
         if (!newName.equals(name)) {
             return newName;
@@ -68,21 +74,33 @@ public class CleanroomRemapper<T extends Remapper & Unmapper> implements IRemapp
     @Override
     public String map(String typeName) {
         this.logger.debug("Remapping class {}", typeName);
+        if (typeName == null) {
+            return typeName;
+        }
         return this.remapper.map(typeName);
     }
 
     @Override
     public String unmap(String typeName) {
+        if (typeName == null) {
+            return typeName;
+        }
         return this.remapper.unmap(typeName);
     }
 
     @Override
     public String mapDesc(String desc) {
+        if (desc == null) {
+            return desc;
+        }
         return this.remapper.mapDesc(desc);
     }
 
     @Override
     public String unmapDesc(String desc) {
+        if (desc == null) {
+            return desc;
+        }
         String newDesc = ObfuscationUtil.unmapDescriptor(desc, this);
         return newDesc != null ? newDesc : desc;
     }
