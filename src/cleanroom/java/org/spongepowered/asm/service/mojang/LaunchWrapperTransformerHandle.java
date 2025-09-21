@@ -7,14 +7,14 @@ import org.spongepowered.asm.service.MixinService;
 
 import java.lang.annotation.Annotation;
 
-class LaunchWrapperTransformerHandle implements ILegacyClassTransformer {
+public class LaunchWrapperTransformerHandle implements ILegacyClassTransformer {
 
     /**
      * Wrapped transformer
      */
     private final IClassTransformer transformer;
 
-    LaunchWrapperTransformerHandle(IClassTransformer transformer) {
+    public LaunchWrapperTransformerHandle(IClassTransformer transformer) {
         this.transformer = transformer;
     }
 
