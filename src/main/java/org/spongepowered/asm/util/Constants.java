@@ -66,6 +66,9 @@ public abstract class Constants {
     public abstract static class ManifestAttributes {
         
         public static final String TWEAKER = "TweakClass";
+        public static final String MODTYPE = "ModType";
+        public static final String FORGEMODTYPE = "FML";
+        public static final String CLEANROOMMODTYPE = "CRL";
         public static final String MAINCLASS = "Main-Class";
         public static final String MIXINCONFIGS = "MixinConfigs";
         public static final String TOKENPROVIDERS = "MixinTokenProviders";
