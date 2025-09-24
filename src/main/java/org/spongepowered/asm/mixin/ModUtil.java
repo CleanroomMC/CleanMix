@@ -61,7 +61,10 @@ public final class ModUtil {
     }
 
     public static String getModId(IMixinConfig config, String defaultValue) {
-        return getDecoration(config, KEY_MOD_ID, defaultValue);
+        if (config.hasDecoration(KEY_MOD_ID)) {
+            return config.getDecoration(KEY_MOD_ID);
+        }
+        return config.getCleanSourceId() != null ? config.getCleanSourceId() : defaultValue;
     }
     
     public static String getModId(ISelectorContext context) {
