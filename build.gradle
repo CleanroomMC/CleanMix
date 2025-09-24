@@ -134,7 +134,8 @@ sourceSets {
 }
 
 configurations {
-    stagingJar
+    uberJar
+    apJar
 
     exampleImplementation       .extendsFrom implementation
     fernflowerImplementation    .extendsFrom implementation
@@ -160,23 +161,25 @@ potemkinModules {
 dependencies {
     def guava = 'com.google.guava:guava:21.0' // from mc1.12 onwards
     def gson = 'com.google.code.gson:gson:2.2.4'
+    def asmTree = "org.ow2.asm:asm-tree:$asmVersion"
     def ff = 'org.jetbrains:intellij-fernflower:1.0.0.9'
 
-    stagingJar guava
-    // stagingJar gson
-    stagingJar ff
+    uberJar ff
+    apJar guava
+    apJar gson
+    apJar asmTree
 
     implementation guava
     implementation gson
     if (Float.parseFloat(asmVersion) < 6) {
         implementation "org.ow2.asm:asm-debug-all:$asmVersion"
     }
-    implementation "org.ow2.asm:asm-tree:$asmVersion"
+    implementation asmTree
     implementation "org.ow2.asm:asm-commons:$asmVersion"
     implementation "org.ow2.asm:asm-util:$asmVersion"
 
     // Annotation Processor
-    apImplementation "org.ow2.asm:asm-tree:$asmVersion"
+    apImplementation asmTree
     apImplementation guava
     apImplementation gson
 
@@ -338,20 +341,19 @@ if (JavaVersion.current().isJava8Compatible()) {
     }
 }
 
-task stagingJar(type: ShadowJar) {
-    sourceSets.findAll { !(it.name =~ /ap|example|modlauncher|modularity|test|modularityDummy/) }.each {
-        from it.output
-    }
-    configurations = [project.configurations.stagingJar]
+task uberJar(type: ShadowJar) {
+    group 'build'
+    archiveClassifier = ''
+
+    configurations = [project.configurations.uberJar]
+    [sourceSets.agent, sourceSets.cleanroom, sourceSets.fernflower, sourceSets.launchwrapper, sourceSets.legacy, sourceSets.main].each { from it.output }
 
     // JAR manifest configuration
     manifest.attributes(
-        "Built-By": System.properties['user.name'],
-        "Created-By": System.properties['java.vm.version'] + " (" + System.properties['java.vm.vendor'] + ")",
         "Implementation-Title": name,
         "Implementation-Version": project.version,
         "Implementation-Vendor": url,
-        // for hotswap agent
+        // for HotswapAgent
         "Premain-Class": "org.spongepowered.tools.agent.MixinAgent",
         "Agent-Class": "org.spongepowered.tools.agent.MixinAgent",
         "Can-Redefine-Classes": true,
@@ -359,28 +361,31 @@ task stagingJar(type: ShadowJar) {
     )
 
     mergeServiceFiles()
-    relocate 'com.google', 'org.spongepowered.include.com.google'
+    // relocate 'com.google', 'org.spongepowered.include.com.google'
+}
+
+task apJar(type: ShadowJar) {
+    group 'build'
+    archiveClassifier = 'processor'
+
+    configurations = [project.configurations.apJar]
+    [sourceSets.agent, sourceSets.ap, sourceSets.cleanroom, sourceSets.launchwrapper, sourceSets.legacy, sourceSets.main].each { from it.output }
+
+    // JAR manifest configuration
+    manifest.attributes(
+            "Implementation-Title": project.name,
+            "Implementation-Version": project.version,
+            "Implementation-Vendor": url,
+    )
+
+    mergeServiceFiles()
 }
 
 // Clear artifacts because jar will be there by default and we want to use staging jar instead
 configurations.archives.artifacts.clear()
 
-// generate shadow jar so we can use the AP standalone
-shadowJar {
-    from sourceSets.ap.output
-    archiveClassifier = 'processor'
-}
-build.dependsOn(shadowJar)
-
-// Run this task instead of build to generate a timestamped shadow jar (for dev)
-task timestamp(type: Jar, dependsOn: build) {
-    if (gradle.startParameter.taskNames.contains(name)) {
-        shadowJar.archiveClassifier = new Date().format('yyyyMMddHHmmss')
-    }
-}
-
 task sourceJar(type: Jar) {
-    sourceSets.findAll { it.name != 'modularity' }.each {
+    [sourceSets.agent, sourceSets.cleanroom, sourceSets.fernflower, sourceSets.launchwrapper, sourceSets.legacy, sourceSets.main].each {
         from it.java
         from it.resources
     }
@@ -394,10 +399,10 @@ task javadocJar(type: Jar, dependsOn: javadoc) {
 }
 
 artifacts {
-    archives stagingJar
+    archives uberJar
+    archives apJar
     archives sourceJar
     archives javadocJar
-    archives shadowJar
 }
 
 ext.excludePomDeps = [
@@ -410,13 +415,6 @@ ext.excludePomDeps = [
     'log4j-core'
 ]
 
-centralPortalPublishing.bundle('mixin') {
-    username = ENV.MAVEN_CENTRAL_USERNAME
-    password = ENV.MAVEN_CENTRAL_PASSWORD
-}
-
-tasks.publish.dependsOn tasks.named("publishMixinCentralPortalBundle")
-
 publishing {
     publications {
         developer(MavenPublication) { publication ->
@@ -424,100 +422,21 @@ publishing {
             artifactId = project.base.archivesName.get()
             version = project.buildVersion
 
-            artifact stagingJar
+            artifact uberJar
+            artifact apJar
             artifact sourceJar
             artifact javadocJar
-            artifact shadowJar
-
-            // https://issues.gradle.org/browse/GRADLE-2966
-            pom.withXml {
-                def dependenciesNode = asNode().appendNode('dependencies')
-
-                configurations.runtimeClasspath.allDependencies.each {
-                    if (it.group != null && it.name != null && !excludePomDeps.contains(it.name)) {
-                        def dependencyNode = dependenciesNode.appendNode('dependency')
-                        dependencyNode.appendNode('groupId', it.group)
-                        dependencyNode.appendNode('artifactId', it.name)
-                        dependencyNode.appendNode('version', it.version)
-
-                        if (it.excludeRules.size() > 0) {
-                            def exclusionsNode = dependencyNode.appendNode('exclusions')
-                            it.excludeRules.each { rule ->
-                                def exclusionNode = exclusionsNode.appendNode('exclusion')
-                                exclusionNode.appendNode('groupId', rule.group)
-                                exclusionNode.appendNode('artifactId', rule.module)
-                            }
-                        }
-                    }
-                }
-            }
-
-            pom {
-                name = "CleanMix"
-                description = 'CleanMix is a trait/mixin and bytecode weaving framework for Java using ASM.'
-                url = 'https://github.com/CleanroomMC/CleanMix'
-
-                scm {
-                    connection = "scm:git:https://github.com/CleanroomMC/CleanMix.git"
-                    developerConnection = "scm:git:git@github.com:CleanroomMC/CleanMix.git"
-                    url = "https://github.com/CleanroomMC/CleanMix"
-                }
-
-                issueManagement {
-                    system = "GitHub"
-                    url = "https://github.com/CleanroomMC/CleanMix/issues"
-                }
-
-                licenses {
-                    license {
-                        name = 'The MIT License'
-                        url = 'https://raw.githubusercontent.com/CleanroomMC/CleanMix/main/LICENSE.txt'
-                    }
-                }
-
-                developers {
-                    developer {
-                        id = "rongmario"
-                        name = "rongmario"
-                        email = "rongmario@proton.me"
-                    }
-                }
-            }
         }
     }
 
     repositories {
-        if (ENV.MAVEN_URL) {
-            maven {
-                url = ENV.MAVEN_URL
-                credentials {
-                    username = ENV.MAVEN_USERNAME
-                    password = ENV.MAVEN_PASSWORD
-                }
+        maven {
+            name = 'CleanroomMaven'
+            url = 'https://repo.cleanroommc.com/releases'
+            credentials(PasswordCredentials)
+            authentication {
+                basic(BasicAuthentication)
             }
         }
-
-        centralPortalPublishing.portalBundle(':', 'mixin')
     }
 }
-
-remoteSign {
-    requestUrl = ENV.SIGNING_SERVER
-    pgpAuthKey = ENV.SIGNING_PGP_KEY
-    useDummyForTesting = ENV.SIGNING_SERVER == null
-    sign publishing.publications.developer
-}
-/*
-// A task to ensure that the version being released has not already been released.
-task checkVersion {
-    doFirst {
-        // def xml = new URL("https://maven.fabricmc.net/net/fabricmc/sponge-mixin/maven-metadata.xml").text
-        def metadata = new XmlSlurper().parseText(xml)
-        def versions = metadata.versioning.versions.version*.text();
-        if (versions.contains(version)) {
-            throw new RuntimeException("${version} has already been released!")
-        }
-    }
-}
-*/
-// publish.mustRunAfter checkVersion
