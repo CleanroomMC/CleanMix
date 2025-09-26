@@ -71,8 +71,8 @@ public class AccessorGeneratorFieldSetter extends AccessorGeneratorField {
             if (this.info.getMixin().getOption(MixinEnvironment.Option.AUTO_MUTATE_FINAL_SETTERS)) {
                 this.mutable = true;
                 MixinService.getService().getLogger("mixin")
-                        .warn("{} for final field {}::{} was not marked with @Mutable. CleanMix has rectified this," +
-                                        "though it should be fixed from the mixin author's side",
+                        .warn("{} for final field {}::{} was not marked with @Mutable. CleanMix has rectified this,"
+                                        + "though it should be fixed from the mixin author's side",
                                 this.info, ((MixinTargetContext)this.info.getMixin()).getTarget(), this.targetField.name);
             } else {
                 // CHANGED BY CLEANMIX (higher level of warning without debug for non @Mutable @Accessor setters for final fields
