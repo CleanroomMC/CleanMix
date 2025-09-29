@@ -1,13 +1,9 @@
 plugins {
     id "me.modmuss50.remotesign" version "0.5.0"
-    id "com.gradleup.shadow"  version "9.0.0-rc1"
     id "dev.lukebemish.central-portal-publishing" version "0.1.7"
 }
-
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-
 // Apply plugin
-apply plugin: 'java'
+apply plugin: 'java-library'
 apply plugin: 'checkstyle'
 apply plugin: 'maven-publish'
 apply plugin: 'eclipse'
@@ -25,28 +21,14 @@ base {
     archivesName = 'cleanmix'
 }
 
-def ENV = System.getenv()
-if (!ENV.CI) {
-    version = version + "-local"
-}
-
 // Extended project information
-ext.projectName = 'Mixin'
-ext.inceptionYear = '2014'
+ext.projectName = 'CleanMix'
+ext.inceptionYear = '2025'
 ext.packaging = 'jar'
 
 // Define variables
 ext.asmVersion = project.hasProperty("asmVersion") ? asmVersion : '9.0'
 ext.legacyForgeAsmVersion = project.hasProperty("legacyForgeAsmVersion") ? asmVersion : '5.0.3'
-
-java {
-    modularity.inferModulePath = false
-    disableAutoTargetJvm()
-
-    // Minimum version of Java required
-    sourceCompatibility = '1.8'
-    targetCompatibility = '1.8'
-}
 
 // Project repositories
 repositories {
@@ -133,10 +115,19 @@ sourceSets {
     modularityDummy {}
 }
 
-configurations {
-    uberJar
-    apJar
+java {
+    modularity.inferModulePath = false
+    disableAutoTargetJvm()
 
+    // Minimum version of Java required
+    sourceCompatibility = '1.8'
+    targetCompatibility = '1.8'
+
+    withSourcesJar()
+    withJavadocJar()
+}
+
+configurations {
     exampleImplementation       .extendsFrom implementation
     fernflowerImplementation    .extendsFrom implementation
     launchwrapperImplementation .extendsFrom implementation
@@ -162,12 +153,7 @@ dependencies {
     def guava = 'com.google.guava:guava:21.0' // from mc1.12 onwards
     def gson = 'com.google.code.gson:gson:2.2.4'
     def asmTree = "org.ow2.asm:asm-tree:$asmVersion"
-    def ff = 'org.jetbrains:intellij-fernflower:1.0.0.9'
-
-    uberJar ff
-    apJar guava
-    apJar gson
-    apJar asmTree
+    def ff = 'org.jetbrains:intellij-fernflower:1.2.1.16'
 
     implementation guava
     implementation gson
@@ -276,7 +262,7 @@ eclipse {
 // Filter, process, and include resources
 processResources {
     // Include in final JAR
-   from 'LICENSE.txt'
+    from 'LICENSE.txt'
 }
 
 // License header formatting
@@ -341,16 +327,15 @@ if (JavaVersion.current().isJava8Compatible()) {
     }
 }
 
-task uberJar(type: ShadowJar) {
+tasks.named('jar', Jar) {
     group 'build'
     archiveClassifier = ''
 
-    configurations = [project.configurations.uberJar]
-    [sourceSets.agent, sourceSets.cleanroom, sourceSets.fernflower, sourceSets.launchwrapper, sourceSets.legacy, sourceSets.main].each { from it.output }
+    [sourceSets.ap, sourceSets.agent, sourceSets.cleanroom, sourceSets.fernflower, sourceSets.launchwrapper, sourceSets.legacy, sourceSets.main].each { from it.output }
 
     // JAR manifest configuration
     manifest.attributes(
-        "Implementation-Title": name,
+        "Implementation-Title": project.name,
         "Implementation-Version": project.version,
         "Implementation-Vendor": url,
         // for HotswapAgent
@@ -359,50 +344,48 @@ task uberJar(type: ShadowJar) {
         "Can-Redefine-Classes": true,
         "Can-Retransform-Classes": true
     )
-
-    mergeServiceFiles()
-    // relocate 'com.google', 'org.spongepowered.include.com.google'
 }
 
-task apJar(type: ShadowJar) {
+tasks.register('thinJar', Jar) {
     group 'build'
-    archiveClassifier = 'processor'
+    archiveClassifier = 'thin'
 
-    configurations = [project.configurations.apJar]
-    [sourceSets.agent, sourceSets.ap, sourceSets.cleanroom, sourceSets.launchwrapper, sourceSets.legacy, sourceSets.main].each { from it.output }
+    [sourceSets.agent, sourceSets.cleanroom, sourceSets.fernflower, sourceSets.launchwrapper, sourceSets.legacy, sourceSets.main].each { from it.output }
 
     // JAR manifest configuration
     manifest.attributes(
             "Implementation-Title": project.name,
             "Implementation-Version": project.version,
             "Implementation-Vendor": url,
+            // for HotswapAgent
+            "Premain-Class": "org.spongepowered.tools.agent.MixinAgent",
+            "Agent-Class": "org.spongepowered.tools.agent.MixinAgent",
+            "Can-Redefine-Classes": true,
+            "Can-Retransform-Classes": true
     )
-
-    mergeServiceFiles()
 }
 
-// Clear artifacts because jar will be there by default and we want to use staging jar instead
-configurations.archives.artifacts.clear()
+tasks.named('sourcesJar', Jar) {
+    group 'build'
 
-task sourceJar(type: Jar) {
-    [sourceSets.agent, sourceSets.cleanroom, sourceSets.fernflower, sourceSets.launchwrapper, sourceSets.legacy, sourceSets.main].each {
+    [sourceSets.ap, sourceSets.agent, sourceSets.cleanroom, sourceSets.fernflower, sourceSets.launchwrapper, sourceSets.legacy, sourceSets.main].each {
         from it.java
         from it.resources
     }
-    archiveClassifier = "sources"
+    archiveClassifier = 'sources'
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
-task javadocJar(type: Jar, dependsOn: javadoc) {
+tasks.named('javadocJar', Jar) {
+    group 'build'
+    dependsOn 'javadoc'
+
     from javadoc.destinationDir
-    archiveClassifier = "javadoc"
+    archiveClassifier = 'javadoc'
 }
 
-artifacts {
-    archives uberJar
-    archives apJar
-    archives sourceJar
-    archives javadocJar
+tasks.named('assemble') {
+    dependsOn 'thinJar'
 }
 
 ext.excludePomDeps = [
@@ -418,14 +401,14 @@ ext.excludePomDeps = [
 publishing {
     publications {
         developer(MavenPublication) { publication ->
+            from components.java
+
             groupId = project.group
             artifactId = project.base.archivesName.get()
             version = project.buildVersion
 
-            artifact uberJar
-            artifact apJar
-            artifact sourceJar
-            artifact javadocJar
+            artifact tasks.named('thinJar')
+
         }
     }
 
