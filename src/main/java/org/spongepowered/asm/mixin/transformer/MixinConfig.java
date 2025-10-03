@@ -1402,9 +1402,11 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
             if (resource == null) {
                 throw new IllegalArgumentException(String.format("The specified resource '%s' was invalid or could not be read", configFile));
             }
-            MixinConfig config = new Gson().fromJson(new InputStreamReader(resource), MixinConfig.class);
-            if (config.onLoad(service, configFile, outer, source)) {
-                return config.getHandle();
+            try (InputStreamReader reader = new InputStreamReader(resource)) {
+                MixinConfig config = new Gson().fromJson(reader, MixinConfig.class);
+                if (config.onLoad(service, configFile, outer, source)) {
+                    return config.getHandle();
+                }
             }
             return null;
         } catch (IllegalArgumentException ex) {
