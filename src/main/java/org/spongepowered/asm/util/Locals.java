@@ -46,6 +46,7 @@ import org.objectweb.asm.tree.analysis.Analyzer;
 import org.objectweb.asm.tree.analysis.AnalyzerException;
 import org.objectweb.asm.tree.analysis.BasicValue;
 import org.objectweb.asm.tree.analysis.Frame;
+import org.spongepowered.asm.mixin.ModUtil;
 import org.spongepowered.asm.mixin.transformer.ClassInfo;
 import org.spongepowered.asm.mixin.transformer.ClassInfo.FrameData;
 import org.spongepowered.asm.mixin.transformer.ClassInfo.Method;
@@ -328,11 +329,16 @@ public final class Locals {
      *      bear in mind that if the specified node is itself a STORE opcode,
      *      then we will be looking at the state of the locals PRIOR to its
      *      invocation
+     * @param fabricCompatibility Fabric compatibility level
      * @return A sparse array containing a view (hopefully) of the locals at the
      *      specified location
      */
-    public static LocalVariableNode[] getLocalsAt(ClassNode classNode, MethodNode method, AbstractInsnNode node) {
-        return Locals.getLocalsAt(classNode, method, node, Settings.DEFAULT);
+    public static LocalVariableNode[] getLocalsAt(ClassNode classNode, MethodNode method, AbstractInsnNode node, int fabricCompatibility) {
+        if (fabricCompatibility >= ModUtil.FABRIC_COMPATIBILITY_0_10_0) {
+            return Locals.getLocalsAt(classNode, method, node, Settings.DEFAULT);
+        } else {
+            return getLocalsAt092(classNode, method, node);
+        }
     }
     
     /**

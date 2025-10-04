@@ -43,7 +43,7 @@ public class RuntimeDecompilerAsync extends RuntimeDecompiler implements Runnabl
 
     public RuntimeDecompilerAsync(File outputPath) {
         super(outputPath);
-        this.thread = new Thread(this, "Decompiler thread");
+        this.thread = new Thread(this, "Decompiler Thread");
         this.thread.setDaemon(true);
         this.thread.setPriority(Thread.MIN_PRIORITY);
         this.thread.setUncaughtExceptionHandler(this);

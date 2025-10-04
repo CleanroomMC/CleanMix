@@ -1002,8 +1002,8 @@ public final class ClassInfo {
     /**
      * Get all mixins which target this class
      */
-    Set<MixinInfo> getMixins() {
-        return this.isMixin ? Collections.<MixinInfo>emptySet() : Collections.<MixinInfo>unmodifiableSet(this.mixins);
+    public Set<IMixinInfo> getMixins() {
+        return this.isMixin ? Collections.<IMixinInfo>emptySet() : Collections.<IMixinInfo>unmodifiableSet(this.mixins);
     }
 
     /**
@@ -2155,17 +2155,6 @@ public final class ClassInfo {
      */
     public static ClassInfo fromCache(String className) {
         return ClassInfo.cache.get(className.replace('.', '/'));
-    }
-
-    public static Map<String, String> getMixinsOfClass(String className) {
-        ClassInfo info = fromCache(className);
-        Map<String, String> map = new HashMap<>();
-        if (info != null) {
-            for (MixinInfo mixinInfo : info.appliedMixins) {
-                map.put(mixinInfo.getClassName(), mixinInfo.getConfig().getName());
-            }
-        }
-        return map;
     }
 
     /**

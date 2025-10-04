@@ -36,6 +36,7 @@ import org.spongepowered.asm.mixin.MixinEnvironment;
 import org.spongepowered.asm.mixin.MixinEnvironment.Option;
 import org.spongepowered.asm.mixin.MixinEnvironment.Phase;
 import org.spongepowered.asm.mixin.Mixins;
+import org.spongepowered.asm.mixin.ModUtil;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfig;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinErrorHandler;
@@ -60,6 +61,7 @@ import org.spongepowered.asm.mixin.transformer.throwables.MixinTransformerError;
 import org.spongepowered.asm.mixin.transformer.throwables.ReEntrantTransformerError;
 import org.spongepowered.asm.service.IMixinAuditTrail;
 import org.spongepowered.asm.service.IMixinService;
+import org.spongepowered.asm.service.MixinInternalNote;
 import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.util.Annotations;
 import org.spongepowered.asm.util.PrettyPrinter;
@@ -70,7 +72,7 @@ import org.spongepowered.asm.util.perf.Profiler.Section;
 /**
  * Heart of the Mixin pipeline 
  */
-class MixinProcessor {
+public class MixinProcessor {
 
     /**
      * Phase during which an error occurred, delegates to functionality in
@@ -130,7 +132,7 @@ class MixinProcessor {
         protected abstract String getContext(IMixinInfo mixin, String context);
 
         public String getLogMessage(String context, InvalidMixinException ex, IMixinInfo mixin) {
-            return String.format("Mixin %s for mod %s failed %s: %s %s", this.text, org.spongepowered.asm.mixin.FabricUtil.getModId(mixin.getConfig()), this.getContext(mixin, context), ex.getClass().getName(), ex.getMessage());
+            return String.format("Mixin %s for mod %s failed %s: %s %s", this.text, ModUtil.getModId(mixin.getConfig()), this.getContext(mixin, context), ex.getClass().getName(), ex.getMessage());
         }
 
         public String getErrorMessage(IMixinInfo mixin, IMixinConfig config, Phase phase) {
@@ -287,6 +289,19 @@ class MixinProcessor {
         boolean transformed = false;
         
         try {
+            SortedSet<MixinInfo> mixins = new TreeSet<MixinInfo>();
+            for (MixinConfig config : this.configs) {
+                if (config.hasMixinsFor(name)) {
+                    // Get and sort mixins for the class
+                    for (MixinInfo mixin : config.getMixinsFor(name)) {
+                        if (mixin.shouldApplyMixin(false, name)) {
+                            mixin.validate();
+                            mixins.add(mixin);
+                        }
+                    }
+                }
+            }
+
             ProcessResult result = this.coprocessors.process(name, targetClassNode);
             transformed |= result.isTransformed();
             
@@ -311,7 +326,7 @@ class MixinProcessor {
                     }
                     continue;
                 }
-            }                
+            }
 
             if (packageOwnedByConfig != null) {
                 // AMS - Temp passthrough for injection points and dynamic selectors. Moving to service in 0.9
@@ -323,23 +338,7 @@ class MixinProcessor {
                 throw new IllegalClassLoadError(this.getInvalidClassError(name, targetClassNode, packageOwnedByConfig));
             }
 
-            SortedSet<MixinInfo> mixins = null;
-            for (MixinConfig config : this.configs) {
-                if (config.hasMixinsFor(name)) {
-                    if (mixins == null) {
-                        mixins = new TreeSet<MixinInfo>();
-                    }
-                    
-                    // Get and sort mixins for the class
-                    mixins.addAll(config.getMixinsFor(name));
-                }
-            }
-            if (mixins != null) {
-                mixins.forEach(MixinInfo::validate);
-                mixins.removeIf(mixinInfo -> !mixinInfo.shouldApplyMixin(false, name));
-            }
-
-            if (mixins != null && !mixins.isEmpty()) {
+            if (!mixins.isEmpty()) {
                 // Re-entrance is "safe" as long as we don't need to apply any mixins, if there are mixins then we need to panic now
                 if (locked) {
                     ReEntrantTransformerError error = new ReEntrantTransformerError("Re-entrance error.");
@@ -485,6 +484,12 @@ class MixinProcessor {
         return targets;
     }
 
+    public void refresh() {
+        this.select(MixinEnvironment.getCurrentEnvironment());
+
+        this.service.offer(new MixinInternalNote("Refresh"));
+    }
+
     private void checkSelect(MixinEnvironment environment) {
         if (this.currentEnvironment != environment) {
             this.select(environment);
@@ -595,7 +600,7 @@ class MixinProcessor {
                 this.handleMixinPrepareError(config, ex, environment);
             } catch (Exception ex) {
                 String message = ex.getMessage();
-                MixinProcessor.logger.error("Error encountered whilst initialising mixin config '" + config.getName() + "' from mod '" + org.spongepowered.asm.mixin.FabricUtil.getModId(config) + "': " + message, ex);
+                MixinProcessor.logger.error("Error encountered whilst initialising mixin config '" + config.getName() + "' from mod '" + ModUtil.getModId(config) + "': " + message, ex);
             }
         }
         
@@ -622,7 +627,7 @@ class MixinProcessor {
                 this.handleMixinPrepareError(config, ex, environment);
             } catch (Exception ex) {
                 String message = ex.getMessage();
-                MixinProcessor.logger.error("Error encountered during mixin config postInit step '" + config.getName() + "' from mod '" + org.spongepowered.asm.mixin.FabricUtil.getModId(config) + "': " + message, ex);
+                MixinProcessor.logger.error("Error encountered during mixin config postInit step '" + config.getName() + "' from mod '" + ModUtil.getModId(config) + "': " + message, ex);
             }
         }
         
@@ -664,7 +669,7 @@ class MixinProcessor {
                 .kv("Action", errorPhase.name())
                 .kv("Mixin", mixin.getClassName())
                 .kv("Config", config.getName())
-                .kv("ModId", org.spongepowered.asm.mixin.FabricUtil.getModId(config))
+                .kv("ModId", ModUtil.getModId(config))
                 .kv("Phase", phase)
                 .hr('-')
                 .add("    %s", ex.getClass().getName())

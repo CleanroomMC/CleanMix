@@ -40,16 +40,23 @@ import net.minecraft.launchwrapper.IClassTransformer;
  * will actually provide callbacks to the underlying mixin transformer.
  */
 public final class Proxy implements IClassTransformer, ILegacyClassTransformer {
-    
+
+    /**
+     * Actual mixin transformer instance
+     * Stop using reflection or grabbing this field directly!
+     * Call {@link Proxy#refreshMixins()} instead!
+     */
+    @Deprecated
+    public static MixinTransformer transformer = new MixinTransformer();
+
+    public static void refreshMixins() {
+        transformer.refresh();
+    }
+
     /**
      * All existing proxies
      */
     private static List<Proxy> proxies = new ArrayList<Proxy>();
-    
-    /**
-     * Actual mixin transformer instance
-     */
-    private static MixinTransformer transformer = new MixinTransformer();
     
     /**
      * True if this is the active proxy, newer proxies disable their older

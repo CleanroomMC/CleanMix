@@ -77,9 +77,4 @@ public interface IGlobalPropertyService {
      */
     public abstract String getPropertyString(IPropertyKey key, String defaultValue);
 
-    /**
-     * Will be called to find if this service is in valid environment.
-     */
-    public abstract boolean isValid();
-
 }

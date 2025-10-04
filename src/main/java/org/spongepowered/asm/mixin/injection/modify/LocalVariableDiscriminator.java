@@ -35,6 +35,7 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.LocalVariableNode;
+import org.spongepowered.asm.mixin.ModUtil;
 import org.spongepowered.asm.mixin.injection.modify.LocalVariableDiscriminator.Context.Local;
 import org.spongepowered.asm.mixin.injection.struct.InjectionInfo;
 import org.spongepowered.asm.mixin.injection.struct.Target;
@@ -151,7 +152,7 @@ public class LocalVariableDiscriminator {
 
         private Local[] initLocals(Target target, boolean argsOnly, AbstractInsnNode node) {
             if (!argsOnly) {
-                LocalVariableNode[] locals = Locals.getLocalsAt(target.classNode, target.method, node);
+                LocalVariableNode[] locals = Locals.getLocalsAt(target.classNode, target.method, node, ModUtil.getCompatibility(info));
                 if (locals != null) {
                     Local[] lvt = new Local[locals.length];
                     for (int l = 0; l < locals.length; l++) {

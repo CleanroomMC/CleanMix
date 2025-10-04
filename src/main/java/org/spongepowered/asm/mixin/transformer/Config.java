@@ -114,17 +114,8 @@ public class Config {
         return parent != null ? parent.getHandle() : null;
     }
 
-    /**
-     * Decorate this config with arbitrary metadata for debugging or
-     * compatibility purposes
-     *
-     * @param key meta key
-     * @param value meta value
-     * @param <V> value type
-     * @throws IllegalArgumentException if the specified key exists already
-     */
-    public <V> void decorate(String key, V value) {
-        this.config.decorate(key, value);
+    public IMixinConfigSource getSource() {
+        return this.config.getSource() != null ? this.config.getSource() : this.getParent() == null ? null : this.getParent().config.getSource();
     }
 
     /* (non-Javadoc)
@@ -155,7 +146,7 @@ public class Config {
      * Adds a config to blacklist
      * @param config The config json to block
      */
-    public static void addBlackList(String config) {
+    public static void blacklist(String config) {
         configBlackList.add(config);
     }
 
@@ -164,7 +155,7 @@ public class Config {
      * @return config map
      */
     public static Map<String, Config> getAllConfigs() {
-        return ImmutableMap.<String, Config>builder().putAll(allConfigs).build();
+        return ImmutableMap.copyOf(allConfigs);
     }
 
     /**
@@ -192,7 +183,7 @@ public class Config {
     @Deprecated
     public static Config create(String configFile, MixinEnvironment outer, IMixinConfigSource source) {
         if (configBlackList.contains(configFile)) {
-            throw new RuntimeException("Config file " + configFile + " found in blacklist.");
+            return null;
         }
         Config config = Config.allConfigs.get(configFile);
         if (config != null) {

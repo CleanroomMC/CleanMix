@@ -42,7 +42,7 @@ import org.spongepowered.asm.util.asm.ASM;
 /**
  * Transformer which manages the mixin configuration and application process
  */
-final class MixinTransformer extends TreeTransformer implements IMixinTransformer {
+public final class MixinTransformer extends TreeTransformer implements IMixinTransformer {
     
     /**
      * Impl of mixin transformer factory
@@ -290,6 +290,10 @@ final class MixinTransformer extends TreeTransformer implements IMixinTransforme
     @Override
     public synchronized boolean generateClass(MixinEnvironment environment, String name, ClassNode classNode) {
         return this.generator.generateClass(environment, name, classNode);
+    }
+
+    void refresh() {
+        this.processor.refresh();
     }
     
     /**

@@ -41,6 +41,7 @@ import org.spongepowered.asm.launch.MixinBootstrap;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.extensibility.IEnvironmentTokenProvider;
+import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.throwables.MixinException;
@@ -93,11 +94,6 @@ public final class MixinEnvironment implements ITokenProvider {
          * "Default" phase, during runtime
          */
         public static final Phase DEFAULT = new Phase(2, "DEFAULT");
-
-        /**
-         * "Mod" phase, after mod list is available
-         */
-        public static final Phase MOD = new Phase(3, "Phase");
         
         /**
          * All phases
@@ -105,8 +101,7 @@ public final class MixinEnvironment implements ITokenProvider {
         static final List<Phase> phases = ImmutableList.of(
             Phase.PREINIT,
             Phase.INIT,
-            Phase.DEFAULT,
-            Phase.MOD
+            Phase.DEFAULT
         );
         
         /**
@@ -432,7 +427,23 @@ public final class MixinEnvironment implements ITokenProvider {
          * with {@link ClassReader#EXPAND_FRAMES} flag which restores the
          * behaviour from versions 0.8.6 and below, newer versions default to 0.
          */
-        CLASSREADER_EXPAND_FRAMES(Option.TUNABLE, Inherit.INDEPENDENT, "classReaderExpandFrames", true, "false");
+        CLASSREADER_EXPAND_FRAMES(Option.TUNABLE, Inherit.INDEPENDENT, "classReaderExpandFrames", true, "false"),
+
+        /**
+         * <strong>ADDED BY CLEANMIX</strong>
+         * Allow overwrites to conform to a higher visibility than the one expected,
+         * helps cases when the method is access transformed or class
+         * transformed to have its visibility lifted
+         */
+        CONFORM_VISIBILITY("conformVisibility", "true", true),
+
+        /**
+         * <strong>ADDED BY CLEANMIX</strong>
+         * {@link Mutable} should be applied on any setters in {@link Accessor}s,
+         * this option auto mutates the final fields if any accessor setters are linked to it,
+         * but a warning would be posted nevertheless
+         */
+        AUTO_MUTATE_FINAL_SETTERS("autoMutateFinalSetters", "true", true);
         
         /**
          * Type of inheritance for options
@@ -506,7 +517,7 @@ public final class MixinEnvironment implements ITokenProvider {
         final int depth;
 
         private Option(String property) {
-            this(null, property, true);
+            this((Option) null, property, true);
         }
         
         private Option(Inherit inheritance, String property) {
@@ -518,13 +529,17 @@ public final class MixinEnvironment implements ITokenProvider {
         }
 
         private Option(String property, boolean flag) {
-            this(null, property, flag);
+            this((Option) null, property, flag);
         }
 
         private Option(String property, String defaultStringValue) {
             this(null, Inherit.INDEPENDENT, property, false, defaultStringValue);
         }
-        
+
+        private Option(String property, String defaultStringValue, boolean isFlag) {
+            this(null, Inherit.INDEPENDENT, property, isFlag, defaultStringValue);
+        }
+
         private Option(Option parent, String property) {
             this(parent, Inherit.INHERIT, property, true);
         }
@@ -591,11 +606,11 @@ public final class MixinEnvironment implements ITokenProvider {
             this.depth = depth;
         }
         
-        Option getParent() {
+        public Option getParent() {
             return this.parent;
         }
-        
-        String getProperty() {
+
+        public String getProperty() {
             return this.property;
         }
         

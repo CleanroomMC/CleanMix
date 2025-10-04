@@ -36,6 +36,7 @@ import java.util.List;
  */
 public class MixinVerifier extends SimpleVerifier {
     private static final Type OBJECT_TYPE = Type.getType(Object.class);
+    private static final Type NULL_TYPE = Type.getObjectType("null");
 
     public MixinVerifier(int api, Type currentClass, Type currentSuperClass, List<Type> currentClassInterfaces, boolean isInterface) {
         super(api, currentClass, currentSuperClass, currentClassInterfaces, isInterface);
