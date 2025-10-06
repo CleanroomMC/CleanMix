@@ -415,8 +415,8 @@ publishing {
 
     repositories {
         maven {
-            name = 'CleanroomMaven'
-            url = 'https://repo.cleanroommc.com/releases'
+            name = 'Cleanroom'
+            url = project.findProperty('CleanroomRepo') ?: 'https://repo.cleanroommc.com/releases'
             credentials(PasswordCredentials)
             authentication {
                 basic(BasicAuthentication)
