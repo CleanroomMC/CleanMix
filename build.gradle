@@ -23,8 +23,6 @@ base {
 
 // Extended project information
 ext.projectName = 'CleanMix'
-ext.inceptionYear = '2025'
-ext.packaging = 'jar'
 
 // Define variables
 ext.asmVersion = project.hasProperty("asmVersion") ? asmVersion : '9.0'
