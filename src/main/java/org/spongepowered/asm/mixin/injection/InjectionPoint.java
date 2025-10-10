@@ -556,7 +556,7 @@ public abstract class InjectionPoint {
         private final boolean respectSpecifier;
 
         public Shift(InjectionPoint input, int shift) {
-            this(input, shift, ModUtil.COMPATIBILITY_LATEST);
+            this(input, shift, ModUtil.FABRIC_COMPATIBILITY_LATEST);
         }
 
         public Shift(InjectionPoint input, int shift, int fabricCompatibility) {
@@ -566,7 +566,7 @@ public abstract class InjectionPoint {
 
             this.input = input;
             this.shift = shift;
-            this.respectSpecifier = fabricCompatibility >= ModUtil.COMPATIBILITY_0_16_5;
+            this.respectSpecifier = fabricCompatibility >= ModUtil.FABRIC_COMPATIBILITY_0_16_5;
         }
 
         /* (non-Javadoc)
