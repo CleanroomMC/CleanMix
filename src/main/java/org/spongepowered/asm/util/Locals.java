@@ -271,9 +271,116 @@ public final class Locals {
     }
 
     /**
+     * Constructs the initial local variable frame for a method, containing only "this" (if non-static)
+     * and the method parameters with their actual names extracted from the LVT when available.
+     *
+     * @param method the method to construct locals for
+     * @param classNode the class containing the method
+     * @param fabricCompatibility the compatibility level to use
+     * @return an array of LocalVariableNodes representing the initial method frame
+     */
+    public static LocalVariableNode[] getInitialMethodLocals(MethodNode method, ClassNode classNode, int fabricCompatibility) {
+        return getInitialMethodLocals(method, classNode, fabricCompatibility, false);
+    }
+
+    /**
+     * Constructs the initial local variable frame for a method, containing only "this" (if non-static)
+     * and the method parameters with their actual names extracted from the LVT when available.
+     *
+     * @param method the method to construct locals for
+     * @param classNode the class containing the method
+     * @param fabricCompatibility the compatibility level to use
+     * @param fallbackToLvIndex whether the fallback names should use the LVT index of the variable (for backwards compatibility)
+     * @return an array of LocalVariableNodes representing the initial method frame
+     */
+    public static LocalVariableNode[] getInitialMethodLocals(MethodNode method, ClassNode classNode, int fabricCompatibility, boolean fallbackToLvIndex) {
+        boolean isStatic = Bytecode.isStatic(method);
+        Type[] argTypes = Type.getArgumentTypes(method.desc);
+        int initialFrameSize = Bytecode.getFirstNonArgLocalIndex(method);
+        LocalVariableNode[] frame = new LocalVariableNode[initialFrameSize];
+
+        int local = 0;
+
+        // Try to extract parameter names from LVT if compatibility level is high enough
+        String[] paramNames = fabricCompatibility >= org.spongepowered.asm.mixin.FabricUtil.COMPATIBILITY_0_17_0
+                ? getParameterNames(method, isStatic)
+                : new String[argTypes.length];
+
+        // Initialise implicit "this" reference in non-static methods
+        if (!isStatic) {
+            frame[local++] = new LocalVariableNode("this", Type.getObjectType(classNode.name).getDescriptor(), null, null, null, 0);
+        }
+
+        // Initialise method arguments
+        for (int index = 0; index < argTypes.length; index++) {
+            Type argType = argTypes[index];
+            String paramName = paramNames[index];
+            if (paramName == null) {
+                if (fallbackToLvIndex) {
+                    paramName = "arg" + local;
+                } else {
+                    paramName = "arg" + index;
+                }
+            }
+            frame[local] = new LocalVariableNode(paramName, argType.getDescriptor(), null, null, null, local);
+            local += argType.getSize();
+        }
+
+        return frame;
+    }
+
+    /**
+     * Attempts to extract parameter names from the method's local variable table.
+     * This is used as a fallback when detailed LVT information is not available at a specific
+     * instruction, but we still want to use actual parameter names instead of generic "arg" names.
+     *
+     * @param method the method to extract parameter names from
+     * @param isStatic whether the method is static (affects the starting local index)
+     * @return an array of parameter names, with null entries where names are unavailable
+     */
+    private static String[] getParameterNames(MethodNode method, boolean isStatic) {
+        Type[] argTypes = Type.getArgumentTypes(method.desc);
+        if (argTypes.length == 0) {
+            return new String[0];
+        }
+
+        // Always allocate array for all parameters
+        String[] paramNames = new String[argTypes.length];
+
+        // Build map of local variable index to parameter index
+        Map<Integer, Integer> indexToParam = new HashMap<>();
+        int localIndex = isStatic ? 0 : 1; // Skip "this" for non-static methods
+        for (int arg = 0; arg < argTypes.length; arg++) {
+            indexToParam.put(localIndex, arg);
+            localIndex += argTypes[arg].getSize();
+        }
+
+        // Single pass through local variable table to extract names
+        if (method.localVariables != null) {
+            for (LocalVariableNode lvNode : method.localVariables) {
+                Integer paramIndex = indexToParam.get(lvNode.index);
+                if (paramIndex != null) {
+                    paramNames[paramIndex] = lvNode.name;
+                }
+            }
+        }
+
+        // Merge in names from parameters field where LVT didn't provide them
+        if (method.parameters != null) {
+            for (int i = 0; i < Math.min(argTypes.length, method.parameters.size()); i++) {
+                if (paramNames[i] == null) {
+                    paramNames[i] = method.parameters.get(i).name;
+                }
+            }
+        }
+
+        return paramNames;
+    }
+
+    /**
      * Injects appropriate LOAD opcodes into the supplied InsnList for each
      * entry in the supplied locals array starting at pos
-     * 
+     *
      * @param locals Local types (can contain nulls for uninitialised, TOP, or
      *      RETURN values in locals)
      * @param insns Instruction List to inject into
@@ -334,7 +441,7 @@ public final class Locals {
      */
     public static LocalVariableNode[] getLocalsAt(ClassNode classNode, MethodNode method, AbstractInsnNode node, int fabricCompatibility) {
         if (fabricCompatibility >= org.spongepowered.asm.mixin.FabricUtil.COMPATIBILITY_0_10_0) {
-            return Locals.getLocalsAt(classNode, method, node, Settings.DEFAULT);
+            return Locals.getLocalsAt(classNode, method, node, Settings.DEFAULT, fabricCompatibility);
         } else {
             return getLocalsAt092(classNode, method, node);
         }
@@ -343,16 +450,16 @@ public final class Locals {
     /**
      * <p>Attempts to identify available locals at an arbitrary point in the
      * bytecode specified by node.</p>
-     * 
+     *
      * <p>This method builds an approximate view of the locals available at an
      * arbitrary point in the bytecode by examining the following features in
-     * the bytecode:</p> 
+     * the bytecode:</p>
      * <ul>
      *   <li>Any available stack map frames</li>
      *   <li>STORE opcodes</li>
      *   <li>The local variable table</li>
      * </ul>
-     * 
+     *
      * <p>Inference proceeds by walking the bytecode from the start of the
      * method looking for stack frames and STORE opcodes. When either of these
      * is encountered, an attempt is made to cross-reference the values in the
@@ -363,14 +470,14 @@ public final class Locals {
      * simulated locals array are spaced according to their size (unlike the
      * representation in FrameNode) and this TOP, NULL and UNINTITIALIZED_THIS
      * opcodes will be represented as null values in the simulated frame.</p>
-     * 
+     *
      * <p>This code does not currently simulate the prescribed JVM behaviour
      * where overwriting the second slot of a DOUBLE or LONG actually
      * invalidates the DOUBLE or LONG stored in the previous location, so we
      * have to hope (for now) that this behaviour isn't emitted by the compiler
      * or any upstream transformers. I may have to re-think this strategy if
      * this situation is encountered in the wild.</p>
-     * 
+     *
      * @param classNode ClassNode containing the method, used to initialise the
      *      implicit "this" reference in simple methods with no stack frames
      * @param method MethodNode to explore
@@ -384,6 +491,10 @@ public final class Locals {
      *      specified location
      */
     public static LocalVariableNode[] getLocalsAt(ClassNode classNode, MethodNode method, AbstractInsnNode node, Settings settings) {
+        return getLocalsAt(classNode, method, node, settings, org.spongepowered.asm.mixin.FabricUtil.COMPATIBILITY_LATEST);
+    }
+
+    private static LocalVariableNode[] getLocalsAt(ClassNode classNode, MethodNode method, AbstractInsnNode node, Settings settings, int fabricCompatibility) {
         for (int i = 0; i < 3 && (node instanceof LabelNode || node instanceof LineNumberNode); i++) {
             AbstractInsnNode nextNode = Locals.nextNode(method.instructions, node);
             if (nextNode instanceof FrameNode) { // Do not ffwd over frames
@@ -402,25 +513,16 @@ public final class Locals {
         }
         List<FrameData> frames = methodInfo.getFrames();
 
+        // Initialize the frame with "this" and method parameters
+        LocalVariableNode[] initialLocals = getInitialMethodLocals(method, classNode, fabricCompatibility);
         LocalVariableNode[] frame = new LocalVariableNode[method.maxLocals];
-        int local = 0, index = 0;
+        System.arraycopy(initialLocals, 0, frame, 0, initialLocals.length);
 
-        // Initialise implicit "this" reference in non-static methods
-        if ((method.access & Opcodes.ACC_STATIC) == 0) {
-            frame[local++] = new LocalVariableNode("this", Type.getObjectType(classNode.name).toString(), null, null, null, 0);
-        }
-        
-        // Initialise method arguments
-        for (Type argType : Type.getArgumentTypes(method.desc)) {
-            frame[local] = new LocalVariableNode("arg" + index++, argType.toString(), null, null, null, local);
-            local += argType.getSize();
-        }
-        
-        final int initialFrameSize = local;
-        int frameSize = local;
+        final int initialFrameSize = initialLocals.length;
+        int frameSize = initialFrameSize;
         int frameIndex = -1;
-        int lastFrameSize = local;
-        int knownFrameSize = local;
+        int lastFrameSize = initialFrameSize;
+        int knownFrameSize = initialFrameSize;
         VarInsnNode storeInsn = null;
 
         for (Iterator<AbstractInsnNode> iter = method.instructions.iterator(); iter.hasNext();) {
