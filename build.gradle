@@ -51,8 +51,14 @@ sourceSets {
         ext.languageVersion = 8
         ext.compatibility = '1.8'
     }
+    cleanroom {
+        compileClasspath += main.output
+        ext.languageVersion = 8
+        ext.compatibility = '1.8'
+    }
     main {
         compileClasspath += legacy.output
+        compileClasspath += cleanroom.output
         ext.languageVersion = 8
         ext.compatibility = '1.8'
     }
@@ -79,11 +85,6 @@ sourceSets {
     }
     test {
         ext.modularityExcluded = true
-    }
-    cleanroom {
-        compileClasspath += main.output
-        ext.languageVersion = 8
-        ext.compatibility = '1.8'
     }
     launchwrapper {
         compileClasspath += main.output

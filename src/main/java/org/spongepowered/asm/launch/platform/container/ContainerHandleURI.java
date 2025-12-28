@@ -37,7 +37,11 @@ import org.spongepowered.asm.util.Files;
  * from previous mixin versions
  */
 public class ContainerHandleURI implements IContainerHandle {
-    
+
+    /**
+     * String id
+     */
+    private final String id;
     /**
      * Target URI
      */
@@ -49,14 +53,19 @@ public class ContainerHandleURI implements IContainerHandle {
     private final MainAttributes attributes;
 
     public ContainerHandleURI(URI uri) {
+        this(null, uri);
+    }
+
+    // Added by Cleanroom
+    public ContainerHandleURI(String id, URI uri) {
+        this.id = id;
         this.uri = uri;
         this.attributes = MainAttributes.of(uri);
     }
     
     @Override
     public String getId() {
-        // Not enough information for this
-        return null;
+        return id;
     }
     
     @Override

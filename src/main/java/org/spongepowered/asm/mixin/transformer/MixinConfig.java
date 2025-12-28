@@ -24,14 +24,20 @@
  */
 package org.spongepowered.asm.mixin.transformer;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Constructor;
+import java.net.JarURLConnection;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.google.common.base.Joiner;
+import org.spongepowered.asm.launch.platform.container.ContainerHandlePath;
 import org.spongepowered.asm.logging.Level;
 import org.spongepowered.asm.logging.ILogger;
 import org.spongepowered.asm.launch.MixinInitialisationError;
@@ -59,6 +65,7 @@ import org.spongepowered.asm.mixin.transformer.ext.Extensions;
 import org.spongepowered.asm.mixin.transformer.throwables.InvalidMixinException;
 import org.spongepowered.asm.service.IMixinService;
 import org.spongepowered.asm.service.MixinService;
+import org.spongepowered.asm.service.cleanroom.ICleanroomMixinService;
 import org.spongepowered.asm.util.VersionNumber;
 
 import com.google.common.base.Strings;
@@ -457,7 +464,7 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
     private boolean onLoad(IMixinService service, String name, MixinEnvironment fallbackEnvironment, IMixinConfigSource source) {
         this.service = service;
         this.name = name;
-        this.source = source;
+        this.source = findSource(source, name); // Added by Cleanroom
 
         // If parent is specified, don't perform postinit until parent is assigned
         if (!Strings.isNullOrEmpty(this.parentName)) {
@@ -1414,6 +1421,28 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
         } catch (Exception ex) {
             throw new IllegalArgumentException(String.format("The specified resource '%s' was invalid or could not be read", configFile), ex);
         }
+    }
+
+    // Added by Cleanroom
+    private static IMixinConfigSource findSource(IMixinConfigSource original, String configFile) {
+        IMixinService service = MixinService.getService();
+        if (original == null || service instanceof ICleanroomMixinService) {
+            try {
+                URL resource = ((ICleanroomMixinService) service).getResource(configFile);
+                if (resource == null) {
+                    throw new IOException("Mixin config cannot be found, getResource and getResourceAsStream implementations are possibly inconsistent");
+                }
+                if (!"jar".equals(resource.getProtocol())) {
+                    throw new IOException("Mixin config does not reside in a jar file");
+                }
+                JarURLConnection conn = (JarURLConnection) resource.openConnection();
+                return new ContainerHandlePath(Paths.get(conn.getJarFileURL().toURI()));
+            } catch (IOException | URISyntaxException e) {
+                service.getLogger("mixin").warn("Unable to locate resource for mixin config source: {}", configFile, e);
+                return null;
+            }
+        }
+        return original;
     }
 
     private static int getCollectionSize(Collection<?>... collections) {
