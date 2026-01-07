@@ -65,7 +65,7 @@ import org.spongepowered.asm.mixin.transformer.ext.Extensions;
 import org.spongepowered.asm.mixin.transformer.throwables.InvalidMixinException;
 import org.spongepowered.asm.service.IMixinService;
 import org.spongepowered.asm.service.MixinService;
-import org.spongepowered.asm.service.cleanroom.ICleanroomMixinService;
+import org.spongepowered.asm.service.clean.ICleanMixinService;
 import org.spongepowered.asm.util.VersionNumber;
 
 import com.google.common.base.Strings;
@@ -1426,9 +1426,9 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
     // Added by Cleanroom
     private static IMixinConfigSource findSource(IMixinConfigSource original, String configFile) {
         IMixinService service = MixinService.getService();
-        if (original == null || service instanceof ICleanroomMixinService) {
+        if (original == null || service instanceof ICleanMixinService) {
             try {
-                URL resource = ((ICleanroomMixinService) service).getResource(configFile);
+                URL resource = ((ICleanMixinService) service).getResource(configFile);
                 if (resource == null) {
                     throw new IOException("Mixin config cannot be found, getResource and getResourceAsStream implementations are possibly inconsistent");
                 }

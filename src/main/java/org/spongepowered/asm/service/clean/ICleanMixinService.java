@@ -22,14 +22,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.asm.service.cleanroom;
+package org.spongepowered.asm.service.clean;
 
 import java.net.URL;
 
 /**
- * Cleanroom extension methods for IMixinService instances
+ * CleanMix extension methods for IMixinService instances
  */
-public interface ICleanroomMixinService {
+public interface ICleanMixinService {
 
     /**
      * Get a resource from the appropriate classloader, this is

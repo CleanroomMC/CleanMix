@@ -58,7 +58,6 @@ sourceSets {
     }
     main {
         compileClasspath += legacy.output
-        compileClasspath += cleanroom.output
         ext.languageVersion = 8
         ext.compatibility = '1.8'
     }
