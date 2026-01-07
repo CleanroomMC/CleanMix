@@ -45,7 +45,7 @@ import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.MethodNode;
-import org.spongepowered.asm.mixin.ModUtil;
+import org.spongepowered.asm.mixin.FabricUtil;
 import org.spongepowered.asm.mixin.MixinEnvironment;
 import org.spongepowered.asm.mixin.MixinEnvironment.Option;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInjector;
@@ -556,7 +556,7 @@ public abstract class InjectionPoint {
         private final boolean respectSpecifier;
 
         public Shift(InjectionPoint input, int shift) {
-            this(input, shift, ModUtil.FABRIC_COMPATIBILITY_LATEST);
+            this(input, shift, FabricUtil.COMPATIBILITY_LATEST);
         }
 
         public Shift(InjectionPoint input, int shift, int fabricCompatibility) {
@@ -566,7 +566,7 @@ public abstract class InjectionPoint {
 
             this.input = input;
             this.shift = shift;
-            this.respectSpecifier = fabricCompatibility >= ModUtil.FABRIC_COMPATIBILITY_0_16_5;
+            this.respectSpecifier = fabricCompatibility >= FabricUtil.COMPATIBILITY_0_16_5;
         }
 
         /* (non-Javadoc)
@@ -884,7 +884,7 @@ public abstract class InjectionPoint {
     private static InjectionPoint shift(IInjectionPointContext context, InjectionPoint point,
             At.Shift shift, int by) {
 
-        int fabricCompatibility = ModUtil.getCompatibility(context);
+        int fabricCompatibility = FabricUtil.getCompatibility(context);
         
         if (point != null) {
             if (shift == At.Shift.BEFORE) {

@@ -341,7 +341,7 @@ public abstract class MemberRef {
      */
     public boolean ownerIsMixin() {
         String owner = getOwner();
-        return !owner.startsWith("[") && ClassInfo.forName(owner).isMixin();
+        return !owner.startsWith("[") && ClassInfo.isMixin(owner);
     }
 
     @Override

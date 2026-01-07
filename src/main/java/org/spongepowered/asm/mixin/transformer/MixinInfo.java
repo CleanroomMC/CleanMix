@@ -420,12 +420,14 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
          */
         void readInnerClasses() {
             for (InnerClassNode inner : this.validationClassNode.innerClasses) {
-                ClassInfo innerClass = ClassInfo.forName(inner.name);
                 if ((inner.outerName != null && inner.outerName.equals(this.classInfo.getName()))
                         || inner.name.startsWith(this.validationClassNode.name + "$")) {
-                    if (innerClass.isProbablyStatic() && innerClass.isSynthetic()) {
+                    boolean isStatic = (inner.access & Opcodes.ACC_STATIC) != 0;
+                    boolean isSynthetic = (inner.access & Opcodes.ACC_SYNTHETIC) != 0;
+
+                    if (isStatic && isSynthetic) {
                         this.syntheticInnerClasses.add(inner.name);
-                    } else if (!innerClass.isMixin()) {
+                    } else if (!ClassInfo.isMixin(inner.name)) {
                         this.innerClasses.add(inner.name);
                     }
                 }
@@ -1032,9 +1034,6 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
             return null;
         }
         this.type.validateTarget(target.name, targetInfo);
-        if (target.isPrivate && targetInfo.isReallyPublic() && !this.isVirtual()) {
-            this.handleTargetError(String.format("@Mixin target %s is public in %s and should be specified in value", target.name, this), true);
-        }
         return targetInfo;
     }
 
@@ -1396,7 +1395,7 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
      */
     @Override
     public String toString() {
-        return String.format("%s:%s from mod %s", this.parent.getName(), this.name, ModUtil.getModId(getConfig()));
+        return String.format("%s:%s from mod %s", this.parent.getName(), this.name, FabricUtil.getModId(getConfig()));
     }
     
     static Variant getVariant(ClassNode classNode) {

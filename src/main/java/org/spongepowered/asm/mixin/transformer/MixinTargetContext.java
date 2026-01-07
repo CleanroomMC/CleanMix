@@ -544,7 +544,7 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
             }
         }
         
-        if (Bytecode.isVirtual(method)) {
+        if (this.getEnvironment().getOption(Option.DEBUG_VERIFY) && Bytecode.isVirtual(method)) {
             Method superMethod = this.targetClassInfo.findMethodInHierarchy(method, SearchType.SUPER_CLASSES_ONLY, Traversal.ALL, 0);
             if (superMethod != null && superMethod.isFinal()) {
                 throw new InvalidMixinException(this.mixin, String.format("%s%s in %s overrides a final method from %s",
@@ -638,8 +638,8 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
                 fieldRef.setName(field.getName());
             }
         } else {
-            ClassInfo fieldOwner = ClassInfo.forName(fieldRef.getOwner());
-            if (fieldOwner.isMixin()) {
+            if (ClassInfo.isMixin(fieldRef.getOwner())) {
+                ClassInfo fieldOwner = ClassInfo.forName(fieldRef.getOwner());
                 ClassInfo actualOwner = this.targetClassInfo.findCorrespondingType(fieldOwner);
                 fieldRef.setOwner(actualOwner != null ? actualOwner.getName() : this.getTarget().getClassRef());
             }
@@ -1011,11 +1011,8 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
             descriptorActivity.end();
             return desc;
         }
-        ClassInfo typeInfo = ClassInfo.forName(type);
-        if (typeInfo == null) {
-            throw new ClassMetadataNotFoundException(type.replace('/', '.'));
-        }
-        if (!typeInfo.isMixin() || typeInfo.isLoadable()) {
+        ClassInfo typeInfo;
+        if (!ClassInfo.isMixin(type) || (typeInfo = ClassInfo.forName(type)).isLoadable()) {
             descriptorActivity.end();
             return desc;
         }

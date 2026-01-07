@@ -35,7 +35,7 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.LocalVariableNode;
-import org.spongepowered.asm.mixin.ModUtil;
+import org.spongepowered.asm.mixin.FabricUtil;
 import org.spongepowered.asm.mixin.injection.modify.LocalVariableDiscriminator.Context.Local;
 import org.spongepowered.asm.mixin.injection.struct.InjectionInfo;
 import org.spongepowered.asm.mixin.injection.struct.Target;
@@ -152,32 +152,32 @@ public class LocalVariableDiscriminator {
 
         private Local[] initLocals(Target target, boolean argsOnly, AbstractInsnNode node) {
             if (!argsOnly) {
-                LocalVariableNode[] locals = Locals.getLocalsAt(target.classNode, target.method, node, ModUtil.getCompatibility(info));
+                LocalVariableNode[] locals = Locals.getLocalsAt(target.classNode, target.method, node, FabricUtil.getCompatibility(info));
                 if (locals != null) {
-                    Local[] lvt = new Local[locals.length];
-                    for (int l = 0; l < locals.length; l++) {
-                        if (locals[l] != null) {
-                            lvt[l] = new Local(locals[l].name, Type.getType(locals[l].desc));
-                        }
-                    }
-                    return lvt;
+                    return getLocals(locals);
                 }
             }
-            
-            Local[] lvt = new Local[this.baseArgIndex + Bytecode.getArgsSize(target.arguments)];
-            if (!this.isStatic) {
-                lvt[0] = new Local("this", Type.getObjectType(target.classNode.name));
-            }
-            for (int local = this.baseArgIndex, arg = 0; local < lvt.length; local++) {
-                Type argType = target.arguments[arg++];
-                lvt[local] = new Local("arg" + local, argType);
-                if (argType.getSize() == 2) {
-                    lvt[++local] = null;
+
+            int fabricCompatibility = FabricUtil.getCompatibility(info);
+            // Before 0.17.0, the names of arg variables were inconsistent. With argsOnly = true, they were "arg" + lvIndex
+            // whereas for argsOnly = false, they were "arg" + paramIndex. We pick the latter always now which is the slightly
+            // saner option, but we need to pick the former here when backwards compat is needed.
+            boolean fallbackToLvIndex = fabricCompatibility < FabricUtil.COMPATIBILITY_0_17_0;
+            LocalVariableNode[] initialLocals = Locals.getInitialMethodLocals(target.method, target.classNode, fabricCompatibility, fallbackToLvIndex);
+
+            return getLocals(initialLocals);
+        }
+
+        private Local[] getLocals(LocalVariableNode[] initialLocals) {
+            Local[] lvt = new Local[initialLocals.length];
+            for (int l = 0; l < initialLocals.length; l++) {
+                if (initialLocals[l] != null) {
+                    lvt[l] = new Local(initialLocals[l].name, Type.getType(initialLocals[l].desc));
                 }
             }
             return lvt;
         }
-        
+
         private void initOrdinals() {
             Map<Type, Integer> ordinalMap = new HashMap<Type, Integer>();
             for (int l = 0; l < this.locals.length; l++) {
