@@ -38,7 +38,11 @@ public class ContainerHandlePath extends ContainerHandleURI {
     private final Path path;
 
     public ContainerHandlePath(Path path) {
-        super(path.getFileName().toString(), path.toUri());
+        this(path.getFileName().toString(), path);
+    }
+
+    public ContainerHandlePath(String id, Path path) {
+        super(id, path.toUri());
         this.path = path;
     }
 
