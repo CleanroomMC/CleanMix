@@ -1426,7 +1426,7 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
     // Added by Cleanroom
     private static IMixinConfigSource findSource(IMixinConfigSource original, String configFile) {
         IMixinService service = MixinService.getService();
-        if (original == null || service instanceof ICleanMixinService) {
+        if (original == null && service instanceof ICleanMixinService) {
             try {
                 URL resource = ((ICleanMixinService) service).getResource(configFile);
                 if (resource == null) {
