@@ -32,7 +32,8 @@ import org.spongepowered.asm.util.ObfuscationUtil;
 
 public class CleanroomRemapper<T extends Remapper & Unmapper> implements IRemapper, ObfuscationUtil.IClassRemapper {
 
-    private final ILogger logger = MixinService.getService().getLogger("CleanroomRemapper");
+    private static final ILogger logger = MixinService.getService().getLogger("CleanroomRemapper");
+
     private final T remapper;
     
     public CleanroomRemapper(T remapper) {
@@ -41,7 +42,7 @@ public class CleanroomRemapper<T extends Remapper & Unmapper> implements IRemapp
 
     @Override
     public String mapMethodName(String owner, String name, String desc) {
-        this.logger.debug("Remapping method {}{} for {}", name, desc, owner);
+        logger.debug("Remapping method {}{} for {}", name, desc, owner);
         if (owner == null || name == null || desc == null) {
             return name;
         }
@@ -51,13 +52,13 @@ public class CleanroomRemapper<T extends Remapper & Unmapper> implements IRemapp
         }
         String obfOwner = this.unmap(owner);
         String obfDesc = this.unmapDesc(desc);
-        this.logger.debug("Remapping obfuscated method {}{} for {}", name, obfDesc, obfOwner);
+        logger.debug("Remapping obfuscated method {}{} for {}", name, obfDesc, obfOwner);
         return this.remapper.mapMethodName(obfOwner, name, obfDesc);
     }
 
     @Override
     public String mapFieldName(String owner, String name, String desc) {
-        this.logger.debug("Remapping field {}{} for {}", name, desc, owner);
+        logger.debug("Remapping field {}{} for {}", name, desc, owner);
         if (owner == null || name == null || desc == null) {
             return name;
         }
@@ -67,13 +68,13 @@ public class CleanroomRemapper<T extends Remapper & Unmapper> implements IRemapp
         }
         String obfOwner = this.unmap(owner);
         String obfDesc = this.unmapDesc(desc);
-        this.logger.debug("Remapping obfuscated field {}{} for {}", name, obfDesc, obfOwner);
+        logger.debug("Remapping obfuscated field {}{} for {}", name, obfDesc, obfOwner);
         return this.remapper.mapFieldName(obfOwner, name, obfDesc);
     }
 
     @Override
     public String map(String typeName) {
-        this.logger.debug("Remapping class {}", typeName);
+        logger.debug("Remapping class {}", typeName);
         if (typeName == null) {
             return typeName;
         }
