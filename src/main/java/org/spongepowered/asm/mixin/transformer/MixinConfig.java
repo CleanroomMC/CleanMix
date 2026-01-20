@@ -1054,7 +1054,7 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
         if (sourceId == null) {
             return null;
         }
-        return sourceId.replaceAll("[^A-Za-z]", "");
+        return sourceId.replaceAll("[^A-Za-z]", "").toLowerCase(Locale.ENGLISH);
     }
 
     /**
