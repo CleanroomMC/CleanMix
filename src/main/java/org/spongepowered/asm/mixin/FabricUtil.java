@@ -64,7 +64,7 @@ public final class FabricUtil {
     public static final int COMPATIBILITY_LATEST = COMPATIBILITY_0_17_0;
 
     public static String getModId(IMixinConfig config) {
-        return getModId(config, "(unknown)");
+        return getModId(config, config.getCleanSourceId() == null ? "(unknown)" : config.getCleanSourceId());
     }
 
     public static String getModId(IMixinConfig config, String defaultValue) {
@@ -72,7 +72,8 @@ public final class FabricUtil {
     }
 
     public static String getModId(ISelectorContext context) {
-        return getDecoration(getConfig(context), KEY_MOD_ID, "(unknown)");
+        IMixinConfig config = getConfig(context);
+        return getDecoration(config, KEY_MOD_ID, config.getCleanSourceId() == null ? "(unknown)" : config.getCleanSourceId());
     }
 
     public static int getCompatibility(ISelectorContext context) {
