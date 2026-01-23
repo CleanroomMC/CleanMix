@@ -40,8 +40,8 @@ public class MixinPlatformAgentDefault extends MixinPlatformAgentAbstract {
 
     @Override
     public AcceptResult accept(MixinPlatformManager manager, IContainerHandle handle) {
-        this.mixinConfigs = this.handle.getAttribute(ManifestAttributes.MIXINCONFIGS);
-        this.connectorClass = this.handle.getAttribute(ManifestAttributes.MIXINCONNECTOR);
+        this.mixinConfigs = handle.getAttribute(ManifestAttributes.MIXINCONFIGS);
+        this.connectorClass = handle.getAttribute(ManifestAttributes.MIXINCONNECTOR);
         return this.mixinConfigs == null && this.connectorClass == null ? AcceptResult.REJECTED : super.accept(manager, handle);
     }
 
