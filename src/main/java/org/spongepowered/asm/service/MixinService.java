@@ -248,14 +248,14 @@ public final class MixinService {
                 MixinService.logBuffer.debug("MixinService [{}] is not valid", service.getName());
                 badServices.add(String.format("INVALID[%s]", service.getName()));
             } catch (ServiceConfigurationError sce) {
-//                sce.printStackTrace();
+                sce.printStackTrace();
                 brokenServiceCount++;
             } catch (Throwable th) {
                 String faultingClassName = th.getStackTrace()[0].getClassName();
                 MixinService.logBuffer.debug("MixinService [{}] failed initialisation: {}", faultingClassName, th.getMessage());
                 int pos = faultingClassName.lastIndexOf('.');
                 badServices.add(String.format("ERROR[%s]", pos < 0 ? faultingClassName : faultingClassName.substring(pos + 1)));
-//                th.printStackTrace();
+                th.printStackTrace();
             }
         }
         
