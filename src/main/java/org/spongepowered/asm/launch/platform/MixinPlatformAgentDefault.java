@@ -24,39 +24,36 @@
  */
 package org.spongepowered.asm.launch.platform;
 
+import org.spongepowered.asm.launch.platform.container.IContainerHandle;
 import org.spongepowered.asm.util.Constants.ManifestAttributes;
 
 /**
  * Default platform agent, handles the mixin manifest keys such as
- * <tt>MixinConfigs</tt> and <tt>MixinTokenProviders</tt>.
+ * <tt>MixinConfigs</tt> and <tt>MixinConnector</tt>.
+ * CHANGED BY CLEANROOM:
+ * Removed deprecated compatibility level, token providers manifest key support
+ * Allow default agent to reject if no relevant manifest attributes are present
  */
 public class MixinPlatformAgentDefault extends MixinPlatformAgentAbstract {
 
+    private String mixinConfigs, connectorClass;
+
+    @Override
+    public AcceptResult accept(MixinPlatformManager manager, IContainerHandle handle) {
+        this.mixinConfigs = this.handle.getAttribute(ManifestAttributes.MIXINCONFIGS);
+        this.connectorClass = this.handle.getAttribute(ManifestAttributes.MIXINCONNECTOR);
+        return this.mixinConfigs == null && this.connectorClass == null ? AcceptResult.REJECTED : super.accept(manager, handle);
+    }
+
     @Override
     public void prepare() {
-        @SuppressWarnings("deprecation")
-        String compatibilityLevel = this.handle.getAttribute(ManifestAttributes.COMPATIBILITY);
-        if (compatibilityLevel != null) {
-            this.manager.setCompatibilityLevel(compatibilityLevel);
-        }
-        
-        String mixinConfigs = this.handle.getAttribute(ManifestAttributes.MIXINCONFIGS);
-        if (mixinConfigs != null) {
-            for (String config : mixinConfigs.split(",")) {
+        if (this.mixinConfigs != null) {
+            for (String config : this.mixinConfigs.split(",")) {
                 this.manager.addConfig(config.trim(), this.handle);
             }
         }
-        
-        String tokenProviders = this.handle.getAttribute(ManifestAttributes.TOKENPROVIDERS);
-        if (tokenProviders != null) {
-            for (String provider : tokenProviders.split(",")) {
-                this.manager.addTokenProvider(provider.trim());
-            }
-        }
-        
-        String connectorClass = this.handle.getAttribute(ManifestAttributes.MIXINCONNECTOR);
-        if (connectorClass != null) {
-            this.manager.addConnector(connectorClass.trim());
+        if (this.connectorClass != null) {
+            this.manager.addConnector(this.connectorClass.trim());
         }
     }
 
