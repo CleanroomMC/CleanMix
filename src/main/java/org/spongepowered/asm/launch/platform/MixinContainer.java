@@ -55,7 +55,6 @@ public class MixinContainer {
     private static final ILogger logger = MixinService.getService().getLogger("mixin");
     
     private final IContainerHandle handle;
-    
     private final List<IMixinPlatformAgent> agents = new ArrayList<IMixinPlatformAgent>();
 
     public MixinContainer(MixinPlatformManager manager, IContainerHandle handle) {
@@ -92,11 +91,16 @@ public class MixinContainer {
         }
     }
 
-    /**
-     * 
-     */
     public IContainerHandle getDescriptor() {
         return this.handle;
+    }
+
+    /**
+     * ADDED BY CLEANROOM
+     * @return true if one or more agents accepted this container
+     */
+    public boolean accepted() {
+        return !this.agents.isEmpty();
     }
 
     /**

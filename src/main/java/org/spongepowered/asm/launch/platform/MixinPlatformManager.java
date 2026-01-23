@@ -124,7 +124,7 @@ public class MixinPlatformManager {
      * existing container if the handle was previously registered)
      * 
      * @param handle Container handle to add
-     * @return container for specified resource handle
+     * @return container for specified resource handle (ADDED BY CLEANROOM: can be null when no agents accepted the container)
      */
     public final MixinContainer addContainer(IContainerHandle handle) {
         MixinContainer existingContainer = this.containers.get(handle);
@@ -133,18 +133,25 @@ public class MixinPlatformManager {
         }
         
         MixinContainer container = this.createContainerFor(handle);
-        this.containers.put(handle, container);
-        this.addNestedContainers(handle);
-        return container;
+        if (container != null) {
+            this.containers.put(handle, container);
+            this.addNestedContainers(handle);
+            return container;
+        }
+        return null;
     }
 
     private MixinContainer createContainerFor(IContainerHandle handle) {
         MixinPlatformManager.logger.debug("Adding mixin platform agents for container {}", handle);
         MixinContainer container = new MixinContainer(this, handle);
-        if (this.prepared) {
-            container.prepare();
+        if (container.accepted()) {
+            if (this.prepared) {
+                container.prepare();
+            }
+            return container;
         }
-        return container;
+        MixinPlatformManager.logger.debug("All mixin platform agents rejected container {}", handle);
+        return null;
     }
 
     private void addNestedContainers(IContainerHandle handle) {
