@@ -198,11 +198,12 @@ public abstract class MixinServiceAbstract implements IMixinService {
         }
     }
 
-    /* (non-Javadoc)
+    /**
      * @see org.spongepowered.asm.service.IMixinService#getSideName()
+     * CHANGED BY CLEANROOM: stripped final away, allowing overriding
      */
     @Override
-    public final String getSideName() {
+    public String getSideName() {
         if (this.sideName != null) {
             return this.sideName;
         }
@@ -217,8 +218,9 @@ public abstract class MixinServiceAbstract implements IMixinService {
                 this.getLogger("mixin").catching(ex);
             }
         }
-        
-        return Constants.SIDE_UNKNOWN;
+
+        this.sideName = Constants.SIDE_UNKNOWN;
+        return this.sideName;
     }
 
     private List<IMixinPlatformServiceAgent> getServiceAgents() {
