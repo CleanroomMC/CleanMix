@@ -199,8 +199,9 @@ public abstract class MixinServiceAbstract implements IMixinService {
     }
 
     /**
-     * @see org.spongepowered.asm.service.IMixinService#getSideName()
      * CHANGED BY CLEANROOM: stripped final away, allowing overriding
+     *
+     * @see org.spongepowered.asm.service.IMixinService#getSideName()
      */
     @Override
     public String getSideName() {
