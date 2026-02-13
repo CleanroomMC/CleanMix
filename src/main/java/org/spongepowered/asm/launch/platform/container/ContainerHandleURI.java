@@ -30,6 +30,9 @@ import java.util.Collection;
 import java.util.Collections;
 
 import org.spongepowered.asm.launch.platform.MainAttributes;
+import org.spongepowered.asm.service.IMixinService;
+import org.spongepowered.asm.service.MixinService;
+import org.spongepowered.asm.service.clean.ICleanMixinService;
 import org.spongepowered.asm.util.Files;
 
 /**
@@ -58,6 +61,10 @@ public class ContainerHandleURI implements IContainerHandle {
 
     // Added by Cleanroom
     public ContainerHandleURI(String id, URI uri) {
+        IMixinService service = MixinService.getService();
+        if (service instanceof ICleanMixinService) {
+            id = ((ICleanMixinService) service).getSourceId(uri);
+        }
         this.id = id;
         this.uri = uri;
         this.attributes = MainAttributes.of(uri);

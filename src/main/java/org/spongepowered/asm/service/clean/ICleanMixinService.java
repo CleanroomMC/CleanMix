@@ -24,6 +24,7 @@
  */
 package org.spongepowered.asm.service.clean;
 
+import java.net.URI;
 import java.net.URL;
 
 /**
@@ -39,6 +40,15 @@ public interface ICleanMixinService {
      * @param name resource path
      * @return resource or null if resource not found
      */
-    public abstract URL getResource(String name);
+    URL getResource(String name);
+
+    /**
+     * Resolve a suitable string source identifier for the
+     * {@link org.spongepowered.asm.launch.platform.container.ContainerHandleURI} to take in
+     *
+     * @param source uri path of source
+     * @return suitable string source identifier or null if it cannot be resolved
+     */
+    String getSourceId(URI source);
 
 }
