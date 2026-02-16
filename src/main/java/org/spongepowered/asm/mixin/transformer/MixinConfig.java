@@ -1054,7 +1054,14 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
         if (sourceId == null) {
             return null;
         }
-        return sourceId.replaceAll("[^A-Za-z]", "").toLowerCase(Locale.ENGLISH);
+        StringBuilder builder = new StringBuilder(sourceId.length());
+        for (int i = 0; i < sourceId.length(); i++) {
+            char c = sourceId.charAt(i);
+            if (Character.isLetterOrDigit(c) || c == '_') {
+                builder.append(Character.toLowerCase(c));
+            }
+        }
+        return builder.toString();
     }
 
     /**
