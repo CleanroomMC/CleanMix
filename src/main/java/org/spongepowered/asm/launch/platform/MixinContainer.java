@@ -26,7 +26,6 @@ package org.spongepowered.asm.launch.platform;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 
@@ -46,10 +45,7 @@ public class MixinContainer {
     
     static {
         GlobalProperties.put(GlobalProperties.Keys.AGENTS, MixinContainer.agentClasses);
-        for (String agent : MixinService.getService().getPlatformAgents()) {
-            MixinContainer.agentClasses.add(agent);
-        }
-        MixinContainer.agentClasses.add("org.spongepowered.asm.launch.platform.MixinPlatformAgentDefault");
+        MixinContainer.agentClasses.addAll(MixinService.getService().getPlatformAgents());
     }
     
     private static final ILogger logger = MixinService.getService().getLogger("mixin");
@@ -60,6 +56,7 @@ public class MixinContainer {
     public MixinContainer(MixinPlatformManager manager, IContainerHandle handle) {
         this.handle = handle;
 
+        boolean allowDefaultAgentToAccept = false;
         for (String agentClass : MixinContainer.agentClasses) {
             try {
                 @SuppressWarnings("unchecked")
@@ -70,6 +67,7 @@ public class MixinContainer {
                 IMixinPlatformAgent agent = clazz.getDeclaredConstructor().newInstance();
 
                 AcceptResult acceptAction = agent.accept(manager, this.handle);
+                allowDefaultAgentToAccept |= agent.allowDefaultAgentToProcess(acceptAction);
                 if (acceptAction == AcceptResult.ACCEPTED) {
                     this.agents.add(agent);
                 } else if (acceptAction == AcceptResult.INVALID) {
@@ -87,6 +85,10 @@ public class MixinContainer {
             } catch (ReflectiveOperationException ex) {
                 MixinContainer.logger.catching(ex);
             }
+        }
+        if (allowDefaultAgentToAccept) {
+            MixinPlatformAgentDefault _default = new MixinPlatformAgentDefault();
+            _default.accept(manager, handle);
         }
     }
 

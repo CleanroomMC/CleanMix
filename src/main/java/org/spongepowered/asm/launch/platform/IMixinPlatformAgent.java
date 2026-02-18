@@ -98,4 +98,16 @@ public interface IMixinPlatformAgent {
      */
     public abstract void inject();
 
+    /**
+     * Called after {@link #accept(MixinPlatformManager, IContainerHandle)}
+     *
+     * @param result what this agent returned in the {@link #accept(MixinPlatformManager, IContainerHandle)} method
+     * @return if {@link MixinPlatformAgentDefault} would be allowed to process the container,
+     *      note: this is an OR operation between all agents processing the container, meaning if one
+     *      allows it, the default agent will process regardless.
+     */
+    default boolean allowDefaultAgentToProcess(AcceptResult result) {
+        return result == AcceptResult.ACCEPTED;
+    }
+
 }
