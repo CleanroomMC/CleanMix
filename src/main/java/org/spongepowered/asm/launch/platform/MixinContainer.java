@@ -87,8 +87,8 @@ public class MixinContainer {
             }
         }
         if (allowDefaultAgentToAccept) {
-            MixinPlatformAgentDefault _default = new MixinPlatformAgentDefault();
-            _default.accept(manager, handle);
+            MixinPlatformAgentDefault def = new MixinPlatformAgentDefault();
+            def.accept(manager, handle);
         }
     }
 
