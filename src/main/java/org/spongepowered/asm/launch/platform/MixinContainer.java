@@ -59,30 +59,29 @@ public class MixinContainer {
 
     public MixinContainer(MixinPlatformManager manager, IContainerHandle handle) {
         this.handle = handle;
-        
-        for (Iterator<String> iter = MixinContainer.agentClasses.iterator(); iter.hasNext();) {
-            String agentClass = iter.next();
+
+        for (String agentClass : MixinContainer.agentClasses) {
             try {
                 @SuppressWarnings("unchecked")
-                Class<IMixinPlatformAgent> clazz = (Class<IMixinPlatformAgent>)Class.forName(agentClass);
+                Class<IMixinPlatformAgent> clazz = (Class<IMixinPlatformAgent>) Class.forName(agentClass);
                 String simpleName = clazz.getSimpleName();
-                
+
                 MixinContainer.logger.debug("Instancing new {} for {}", simpleName, this.handle);
                 IMixinPlatformAgent agent = clazz.getDeclaredConstructor().newInstance();
-                
+
                 AcceptResult acceptAction = agent.accept(manager, this.handle);
                 if (acceptAction == AcceptResult.ACCEPTED) {
                     this.agents.add(agent);
                 } else if (acceptAction == AcceptResult.INVALID) {
-                    iter.remove();
-                    continue;
+                    MixinContainer.logger.debug("{} {} container {}, no further agents will accept this container", simpleName, acceptAction.name().toLowerCase(Locale.ROOT), this.handle);
+                    break;
                 }
-                
+
                 MixinContainer.logger.debug("{} {} container {}", simpleName, acceptAction.name().toLowerCase(Locale.ROOT), this.handle);
             } catch (InstantiationException ex) {
                 Throwable cause = ex.getCause();
                 if (cause instanceof RuntimeException) {
-                    throw (RuntimeException)cause;
+                    throw (RuntimeException) cause;
                 }
                 throw new RuntimeException(cause);
             } catch (ReflectiveOperationException ex) {
