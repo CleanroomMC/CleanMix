@@ -25,10 +25,12 @@
 package org.spongepowered.asm.mixin.transformer;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import org.objectweb.asm.tree.InnerClassNode;
 import org.spongepowered.asm.logging.ILogger;
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.ClassVisitor;
@@ -57,12 +59,12 @@ final class InnerClassGenerator implements IClassGenerator {
      * Information about an inner class instance. Implements {@link Remapper} so
      * that it can participate in the remapping process.
      */
-    static class InnerClassInfo extends Remapper implements ISyntheticClassInfo {
+    class InnerClassInfo extends Remapper implements ISyntheticClassInfo {
         
         /**
          * Mixin which provides this class
          */
-        private final IMixinInfo mixin;
+        private final MixinInfo mixin;
         
         /**
          * Target class info
@@ -99,7 +101,7 @@ final class InnerClassGenerator implements IClassGenerator {
          */
         private int loadCounter;
 
-        InnerClassInfo(IMixinInfo mixin, ClassInfo targetClass, ClassInfo nestHost, String originalName, String name, MixinInfo owner) {
+        InnerClassInfo(MixinInfo mixin, ClassInfo targetClass, ClassInfo nestHost, String originalName, String name, MixinInfo owner) {
             this.mixin = mixin;
             this.targetClassInfo = targetClass;
             this.originalName = originalName;
@@ -155,8 +157,22 @@ final class InnerClassGenerator implements IClassGenerator {
         
         void accept(final ClassVisitor classVisitor) throws ClassNotFoundException, IOException {
             ClassNode classNode = MixinService.getService().getBytecodeProvider().getClassNode(this.originalName);
+            if (this.loadCounter == 0) {
+                this.mixin.validateInnerClass(classNode);
+            }
+            this.readInnerClasses(classNode);
             classNode.accept(classVisitor);
             this.loadCounter++;
+        }
+
+        private void readInnerClasses(ClassNode classNode) {
+            // Read possibly nested inner classes
+            for (InnerClassNode inner : classNode.innerClasses) {
+                if ((inner.outerName != null && this.findRemappedName(inner.outerName) != null)
+                        || inner.name.startsWith(this.mixin.getClassRef() + "$")) {
+                    InnerClassGenerator.this.registerInnerClass(this.owner, this.targetClassInfo, inner.name);
+                }
+            }
         }
 
         /**
@@ -198,10 +214,9 @@ final class InnerClassGenerator implements IClassGenerator {
          */
         @Override
         public String map(String key) {
-            if (this.originalName.equals(key)) {
-                return this.name;
-            } else if (this.ownerName.equals(key)) {
-                return this.targetClassInfo.getName();
+            String remappedName = this.findRemappedName(key);
+            if (remappedName != null) {
+                return remappedName;
             }
             return key;
         }
@@ -212,6 +227,15 @@ final class InnerClassGenerator implements IClassGenerator {
         @Override
         public String toString() {
             return this.name;
+        }
+
+        private String findRemappedName(String originalName) {
+            if (this.ownerName.equals(originalName)) {
+                return this.targetClassInfo.getName();
+            }
+            return InnerClassGenerator.this.innerClassNames.get(
+                    InnerClassGenerator.innerClassCoordinate(this.owner, this.targetClassInfo, originalName)
+            );
         }
         
     }
@@ -250,21 +274,6 @@ final class InnerClassGenerator implements IClassGenerator {
             av.visit("mixin", this.info.getOwner().toString());
             av.visit("name", this.info.getOriginalName().substring(this.info.getOriginalName().lastIndexOf('/') + 1));
             av.visitEnd();
-        }
-        
-        /* (non-Javadoc)
-         * @see org.objectweb.asm.commons.RemappingClassAdapter
-         *      #visitInnerClass(java.lang.String, java.lang.String,
-         *      java.lang.String, int)
-         */
-        @Override
-        public void visitInnerClass(String name, String outerName, String innerName, int access) {
-            if (name.startsWith(this.info.getOriginalName() + "$")) {
-                throw new InvalidMixinException(this.info.getOwner(), "Found unsupported nested inner class " + name + " in "
-                        + this.info.getOriginalName());
-            }
-            
-            super.visitInnerClass(name, outerName, innerName, access);
         }
         
     }
@@ -338,7 +347,7 @@ final class InnerClassGenerator implements IClassGenerator {
      * @param innerClassName Original inner class name
      */
     void registerInnerClass(MixinInfo owner, ClassInfo targetClass, String innerClassName) {
-        String coordinate = String.format("%s:%s:%s", owner, innerClassName, targetClass.getName());
+        String coordinate = InnerClassGenerator.innerClassCoordinate(owner, targetClass, innerClassName);
         String uniqueName = this.innerClassNames.get(coordinate);
         if (uniqueName != null) {
             return;
@@ -421,7 +430,8 @@ final class InnerClassGenerator implements IClassGenerator {
         if (name.matches("^[0-9]+$")) {
             name = "Anonymous";
         }
-        return String.format("%s$%s$%s", targetClass, name, UUID.randomUUID().toString().replace("-", ""));
+        UUID uuid = UUID.nameUUIDFromBytes(originalName.getBytes(StandardCharsets.UTF_8));
+        return String.format("%s$%s$%s", targetClass, name, uuid.toString().replace("-", ""));
     }
 
     /**
@@ -455,6 +465,10 @@ final class InnerClassGenerator implements IClassGenerator {
         }
         
         return InnerClassGenerator.clRemapper.getConstructor(ClassVisitor.class, Remapper.class).newInstance(cv, remapper);
+    }
+
+    private static String innerClassCoordinate(MixinInfo owner, ClassInfo targetClass, String innerClassName) {
+        return String.format("%s:%s:%s", owner.getClassRef(), innerClassName, targetClass.getName());
     }
 
 }

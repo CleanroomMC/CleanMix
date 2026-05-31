@@ -27,19 +27,18 @@ package org.spongepowered.asm.mixin.transformer;
 import java.lang.annotation.Annotation;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 
+import com.google.common.base.Suppliers;
 import org.spongepowered.asm.logging.ILogger;
-import org.objectweb.asm.Label;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.signature.SignatureReader;
 import org.objectweb.asm.signature.SignatureVisitor;
 import org.objectweb.asm.tree.*;
-import org.spongepowered.asm.mixin.Final;
-import org.spongepowered.asm.mixin.Intrinsic;
-import org.spongepowered.asm.mixin.MixinEnvironment;
+import org.spongepowered.asm.mixin.*;
 import org.spongepowered.asm.mixin.MixinEnvironment.Option;
-import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.extensibility.IActivityContext.IActivity;
 import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.gen.Invoker;
@@ -50,11 +49,14 @@ import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.struct.Constructor;
+import org.spongepowered.asm.mixin.injection.struct.InjectionNodes.InjectionNode;
+import org.spongepowered.asm.mixin.injection.struct.Target;
 import org.spongepowered.asm.mixin.throwables.MixinError;
 import org.spongepowered.asm.mixin.transformer.ClassInfo.Field;
 import org.spongepowered.asm.mixin.transformer.ext.extensions.ExtensionClassExporter;
 import org.spongepowered.asm.mixin.transformer.meta.MixinMerged;
 import org.spongepowered.asm.mixin.transformer.meta.MixinRenamed;
+import org.spongepowered.asm.mixin.transformer.struct.Clinit;
 import org.spongepowered.asm.mixin.transformer.struct.Initialiser;
 import org.spongepowered.asm.mixin.transformer.throwables.InvalidMixinException;
 import org.spongepowered.asm.mixin.transformer.throwables.MixinApplicatorException;
@@ -62,17 +64,16 @@ import org.spongepowered.asm.service.IMixinAuditTrail;
 import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.util.Annotations;
 import org.spongepowered.asm.util.Bytecode;
-import org.spongepowered.asm.util.Bytecode.DelegateInitialiser;
 import org.spongepowered.asm.util.Constants;
 import org.spongepowered.asm.util.ConstraintParser;
 import org.spongepowered.asm.util.ConstraintParser.Constraint;
+import org.spongepowered.asm.util.asm.ASM;
 import org.spongepowered.asm.util.perf.Profiler;
 import org.spongepowered.asm.util.perf.Profiler.Section;
 import org.spongepowered.asm.util.throwables.ConstraintViolationException;
 import org.spongepowered.asm.util.throwables.InvalidConstraintException;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 
 /**
  * Applies mixins to a target class
@@ -101,11 +102,26 @@ class MixinApplicatorStandard {
          * Main pass, mix in methods, fields, interfaces etc
          */
         MAIN,
-        
+
         /**
-         * Enumerate injectors and scan for injection points 
+         * Enumerate injectors and scan for injection points
          */
         INJECT_PREPARE,
+
+        /**
+         * Apply instance field initialisers and {@code <clinit>} methods in legacy mixins (compat level < 0.17.1)
+         */
+        INITIALISER_APPLY_LEGACY,
+
+        /**
+         * Enumerate injectors and scan for injection points in legacy mixins (compat level < 0.17.1)
+         */
+        INJECT_PREPARE_LEGACY,
+
+        /**
+         * Apply instance field initialisers and {@code <clinit>} methods
+         */
+        INITIALISER_APPLY,
         
         /**
          * Apply accessors and invokers 
@@ -123,11 +139,6 @@ class MixinApplicatorStandard {
         INJECT_APPLY
 
     }
-    
-    /**
-     * Order collection to use for all passes except ApplicatorPass.INJECT
-     */
-    protected static final Set<Integer> ORDERS_NONE = ImmutableSet.<Integer>of(Integer.valueOf(0)); 
 
     /**
      * Log more things
@@ -219,41 +230,15 @@ class MixinApplicatorStandard {
         try {
             IActivity activity = this.activities.begin("PreApply Phase");
             IActivity preApplyActivity = this.activities.begin("Mixin");
-            for (MixinTargetContext context : mixinContexts) {
-                preApplyActivity.next(context.toString());
-                (current = context).preApply(this.targetName, this.targetClass);
-            }
+            this.preApply(preApplyActivity, mixinContexts);
             preApplyActivity.end();
             
             for (ApplicatorPass pass : ApplicatorPass.values()) {
                 activity.next("%s Applicator Phase", pass);
                 Section timer = this.profiler.begin("pass", pass.name().toLowerCase(Locale.ROOT));
-                IActivity applyActivity = this.activities.begin("Mixin");
-                
-                Set<Integer> orders = MixinApplicatorStandard.ORDERS_NONE;
-                if (pass == ApplicatorPass.INJECT_APPLY) {
-                    orders = new TreeSet<Integer>();
-                    for (MixinTargetContext context : mixinContexts) {
-                        context.getInjectorOrders(orders);
-                    }
-                }
-            
-                for (Integer injectorOrder : orders) {
-                    for (Iterator<MixinTargetContext> iter = mixinContexts.iterator(); iter.hasNext();) {
-                        current = iter.next();
-                        applyActivity.next(current.toString());
-                        try {
-                            this.applyMixin(current, pass, injectorOrder.intValue());
-                        } catch (InvalidMixinException ex) {
-                            if (current.isRequired()) {
-                                throw ex;
-                            }
-                            this.context.addSuppressed(ex);
-                            iter.remove(); // Do not process this mixin further
-                        }
-                    }
-                }
-                applyActivity.end();
+
+                this.runApplicatorPass(pass, mixinContexts);
+
                 timer.end();
             }
             
@@ -285,56 +270,125 @@ class MixinApplicatorStandard {
         this.context.processDebugTasks();
     }
 
-    /**
-     * Apply the mixin described by mixin to the supplied ClassNode
-     * 
-     * @param mixin Mixin to apply
-     */
-    protected final void applyMixin(MixinTargetContext mixin, ApplicatorPass pass, int injectorOrder) {
-        IActivity activity = this.activities.begin("Apply");
+    protected void preApply(IActivity activity, List<MixinTargetContext> mixins) throws Exception {
+        for (MixinTargetContext context : mixins) {
+            activity.next(context.toString());
+            context.preApply(this.targetName, this.targetClass);
+        }
+    }
+    
+    private void runApplicatorPass(ApplicatorPass pass, List<MixinTargetContext> mixinContexts) {
         switch (pass) {
             case MAIN:
-                activity.next("Apply Signature");
-                this.applySignature(mixin);
-                activity.next("Apply Interfaces");
-                this.applyInterfaces(mixin);
-                activity.next("Apply Attributess");
-                this.applyAttributes(mixin);
-                activity.next("Apply Annotations");
-                this.applyAnnotations(mixin);
-                activity.next("Apply Fields");
-                this.applyFields(mixin);
-                activity.next("Apply Methods");
-                this.applyMethods(mixin);
-                activity.next("Apply Initialisers");
-                this.applyInitialisers(mixin);
+                this.processMixins(mixinContexts, (activity, mixin) -> {
+                    activity.next("Apply Signature");
+                    this.applySignature(mixin);
+                    activity.next("Apply Interfaces");
+                    this.applyInterfaces(mixin);
+                    activity.next("Apply Attributess");
+                    this.applyAttributes(mixin);
+                    activity.next("Apply Annotations");
+                    this.applyAnnotations(mixin);
+                    activity.next("Apply Fields");
+                    this.applyFields(mixin);
+                    activity.next("Apply Methods");
+                    this.applyMethods(mixin);
+                });
                 break;
-                
+
             case INJECT_PREPARE:
-                activity.next("Prepare Injections");
-                this.prepareInjections(mixin);
+                this.processMixins(mixinContexts, (activity, mixin) -> {
+                    if (FabricUtil.getCompatibility(mixin) >= FabricUtil.COMPATIBILITY_0_17_1) {
+                        activity.next("Prepare Injections");
+                        this.prepareInjections(mixin);
+                    }
+                });
                 break;
-                
+
+            case INITIALISER_APPLY_LEGACY:
+                this.processMixins(mixinContexts, (activity, mixin) -> {
+                    if (FabricUtil.getCompatibility(mixin) < FabricUtil.COMPATIBILITY_0_17_1) {
+                        activity.next("Apply Legacy Initialisers");
+                        this.applyInitialisers(mixin);
+                        activity.next("Apply Legacy CLINIT");
+                        this.applyClinitLegacy(mixin);
+                    }
+                });
+                break;
+
+            case INJECT_PREPARE_LEGACY:
+                this.processMixins(mixinContexts, (activity, mixin) -> {
+                    if (FabricUtil.getCompatibility(mixin) < FabricUtil.COMPATIBILITY_0_17_1) {
+                        activity.next("Prepare Legacy Injections");
+                        this.prepareInjections(mixin);
+                    }
+                });
+                break;
+
+            case INITIALISER_APPLY:
+                Supplier<Clinit> targetClinit = Suppliers.memoize(this::prepareOrCreateClinit);
+                this.processMixins(mixinContexts, (activity, mixin) -> {
+                    if (FabricUtil.getCompatibility(mixin) >= FabricUtil.COMPATIBILITY_0_17_1) {
+                        activity.next("Apply Initialisers");
+                        this.applyInitialisers(mixin);
+                        activity.next("Apply CLINIT");
+                        this.applyClinit(mixin, targetClinit);
+                    }
+                });
+                break;
+
             case ACCESSOR:
-                activity.next("Apply Accessors");
-                this.applyAccessors(mixin);
+                this.processMixins(mixinContexts, (activity, mixin) -> {
+                    activity.next("Apply Accessors");
+                    this.applyAccessors(mixin);
+                });
                 break;
-                
+
             case INJECT_PREINJECT:
-                activity.next("Apply Injections");
-                this.applyPreInjections(mixin);
+                this.processMixins(mixinContexts, (activity, mixin) -> {
+                    activity.next("Pre-Apply Injections");
+                    this.applyPreInjections(mixin);
+                });
                 break;
-                
+
             case INJECT_APPLY:
-                activity.next("Apply Injections");
-                this.applyInjections(mixin, injectorOrder);
+                Set<Integer> orders = new TreeSet<Integer>();
+                for (MixinTargetContext context : mixinContexts) {
+                    context.getInjectorOrders(orders);
+                }
+                for (int injectorOrder : orders) {
+                    this.processMixins(mixinContexts, (activity, mixin) -> {
+                        activity.next("Apply Injections");
+                        this.applyInjections(mixin, injectorOrder);
+                    });
+                }
                 break;
-                
+
             default:
                 // wat?
                 throw new IllegalStateException("Invalid pass specified " + pass);
         }
-        activity.end();
+    }
+
+    private void processMixins(List<MixinTargetContext> mixinContexts, BiConsumer<IActivity, MixinTargetContext> processor) throws InvalidMixinException {
+        IActivity applyActivity = this.activities.begin("Mixin");
+
+        for (Iterator<MixinTargetContext> iter = mixinContexts.iterator(); iter.hasNext();) {
+            MixinTargetContext current = iter.next();
+            applyActivity.next(current.toString());
+            try {
+                IActivity individualActivity = this.activities.begin("Apply");
+                processor.accept(individualActivity, current);
+                individualActivity.end();
+            } catch (InvalidMixinException ex) {
+                if (current.isRequired()) {
+                    throw ex;
+                }
+                this.context.addSuppressed(ex);
+                iter.remove(); // Do not process this mixin further
+            }
+        }
+        applyActivity.end();
     }
 
     protected void applySignature(MixinTargetContext mixin) {
@@ -413,21 +467,25 @@ class MixinApplicatorStandard {
 
     protected void mergeNewFields(MixinTargetContext mixin) {
         for (FieldNode field : mixin.getFields()) {
-            FieldNode target = this.findTargetField(field);
-            if (target == null) {
-                // This is just a local field, so add it
-                this.targetClass.fields.add(field);
-                mixin.fieldMerged(field);
+            mergeNormalField(mixin, field, this.targetClass.fields.size());
+        }
+    }
 
-                if (field.signature != null) {
-                    if (this.mergeSignatures) {
-                        SignatureVisitor sv = mixin.getSignature().getRemapper();
-                        new SignatureReader(field.signature).accept(sv);
-                        field.signature = sv.toString();
-                    } else {
-                        field.signature = null;
-                    }
-                }
+    protected void mergeNormalField(MixinTargetContext mixin, FieldNode field, int index) {
+        FieldNode target = this.findTargetField(field);
+        if (target != null) {
+            return;
+        }
+        this.targetClass.fields.add(index, field);
+        mixin.fieldMerged(field);
+
+        if (field.signature != null) {
+            if (this.mergeSignatures) {
+                SignatureVisitor sv = mixin.getSignature().getRemapper();
+                new SignatureReader(field.signature).accept(sv);
+                field.signature = sv.toString();
+            } else {
+                field.signature = null;
             }
         }
     }
@@ -466,11 +524,6 @@ class MixinApplicatorStandard {
             this.checkMethodVisibility(mixin, mixinMethod);
             this.checkMethodConstraints(mixin, mixinMethod);
             this.mergeMethod(mixin, mixinMethod);
-        } else if (Constants.CLINIT.equals(mixinMethod.name)) {
-            // Class initialiser insns get appended
-            IActivity activity = this.activities.begin("Merge CLINIT insns");
-            this.appendInsns(mixin, mixinMethod);
-            activity.end();
         }
     }
 
@@ -720,6 +773,33 @@ class MixinApplicatorStandard {
                 initialiser.injectInto(ctor);
             }
         }
+    }
+
+    protected void applyClinitLegacy(MixinTargetContext mixin) {
+        MethodNode clinit = Bytecode.findMethod(mixin.getClassNode(), Constants.CLINIT, "()V");
+        if (clinit != null) {
+            this.appendInsns(mixin, clinit);
+        }
+    }
+
+    protected Clinit prepareOrCreateClinit() {
+        MethodNode clinit = Bytecode.findMethod(this.targetClass, Constants.CLINIT, "()V");
+        if (clinit != null) {
+            return Clinit.prepare(this.context.getTargetMethod(clinit));
+        }
+        clinit = new MethodNode(ASM.API_VERSION, Opcodes.ACC_STATIC, Constants.CLINIT, "()V", null, null);
+        InsnNode finalReturn = new InsnNode(Opcodes.RETURN);
+        clinit.instructions.add(finalReturn);
+        this.targetClass.methods.add(clinit);
+        return new Clinit(clinit, finalReturn);
+    }
+
+    protected void applyClinit(MixinTargetContext mixin, Supplier<Clinit> clinit) {
+        MethodNode mixinClinit = Bytecode.findMethod(mixin.getClassNode(), Constants.CLINIT, "()V");
+        if (mixinClinit == null) {
+            return;
+        }
+        clinit.get().append(mixin.getMixin(), mixinClinit);
     }
 
     /**

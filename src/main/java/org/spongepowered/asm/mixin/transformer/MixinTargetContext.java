@@ -637,6 +637,8 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
             if (field != null && field.isRenamed() && field.getOriginalName().equals(fieldRef.getName()) && field.isStatic()) {
                 fieldRef.setName(field.getName());
             }
+        } else if (this.innerClasses.containsKey(fieldRef.getOwner())) {
+            fieldRef.setOwner(this.innerClasses.get(fieldRef.getOwner()));
         } else {
             if (ClassInfo.isMixin(fieldRef.getOwner())) {
                 ClassInfo fieldOwner = ClassInfo.forName(fieldRef.getOwner());
@@ -914,9 +916,6 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
      * @param field Field node to transform
      */
     void transformDescriptor(FieldNode field) {
-        if (!this.inheritsFromMixin && this.innerClasses.size() == 0) {
-            return;
-        }
         field.desc = this.transformSingleDescriptor(field.desc, false);
     }
     
@@ -926,9 +925,6 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
      * @param method Method node to transform
      */
     void transformDescriptor(MethodNode method) {
-        if (!this.inheritsFromMixin && this.innerClasses.size() == 0) {
-            return;
-        }
         method.desc = this.transformMethodDescriptor(method.desc);
     }
 
@@ -939,9 +935,6 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
      * @param member Reference to the method or field
      */
     void transformDescriptor(MemberRef member) {
-        if (!this.inheritsFromMixin && this.innerClasses.size() == 0) {
-            return;
-        }
         if (member.isField()) {
             member.setDesc(this.transformSingleDescriptor(member.getDesc(), false));
         } else {
@@ -955,9 +948,6 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
      * @param typeInsn Type instruction node to transform
      */
     void transformDescriptor(TypeInsnNode typeInsn) {
-        if (!this.inheritsFromMixin && this.innerClasses.size() == 0) {
-            return;
-        }
         typeInsn.desc = this.transformSingleDescriptor(typeInsn.desc, true);
     }
 
