@@ -88,7 +88,9 @@ public class MixinContainer {
         }
         if (allowDefaultAgentToAccept) {
             MixinPlatformAgentDefault def = new MixinPlatformAgentDefault();
-            def.accept(manager, handle);
+            if (def.accept(manager, handle) == AcceptResult.ACCEPTED) {
+                this.agents.add(def);
+            }
         }
     }
 
