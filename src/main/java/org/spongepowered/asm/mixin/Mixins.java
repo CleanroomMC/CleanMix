@@ -147,8 +147,8 @@ public final class Mixins {
     /**
      * Get the number of pending configurations waiting to be consumed by a
      * selection pass.
-     * <p>
-     * CLEANROOM: Note, as of 0.2.0, phases are being removed: configs are queued in the pending set
+     *
+     * <p>CLEANROOM: Note, as of 0.2.0, phases are being removed: configs are queued in the pending set
      * as they are registered and consumed unconditionally on the next select pass
      * (a selected config is removed from the set). The set's size therefore <i>is</i> the
      * count of configs not yet consumed. The old per-config "visited" flag was

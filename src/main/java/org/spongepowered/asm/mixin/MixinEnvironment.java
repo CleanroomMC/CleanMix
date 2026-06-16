@@ -1832,8 +1832,8 @@ public final class MixinEnvironment implements ITokenProvider {
 
     /**
      * Gets the current environment.
-     * <p>
-     * CLEANROOM: Note, as of 0.2.0, phases are being removed.
+     *
+     * <p>CLEANROOM: Note, as of 0.2.0, phases are being removed.
      * The active environment is always {@link Phase#DEFAULT}.
      * @return the currently active environment
      */
