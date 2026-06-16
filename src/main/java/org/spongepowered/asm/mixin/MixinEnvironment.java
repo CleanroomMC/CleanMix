@@ -1831,16 +1831,14 @@ public final class MixinEnvironment implements ITokenProvider {
     }
 
     /**
-     * Gets the current environment
-     * 
+     * Gets the current environment.
+     * <p>
+     * CLEANROOM: Note, as of 0.2.0, phases are being removed.
+     * The active environment is always {@link Phase#DEFAULT}.
      * @return the currently active environment
      */
     public static MixinEnvironment getCurrentEnvironment() {
-        if (MixinEnvironment.currentEnvironment == null) {
-            MixinEnvironment.currentEnvironment = MixinEnvironment.getEnvironment(MixinEnvironment.getCurrentPhase());
-        }
-        
-        return MixinEnvironment.currentEnvironment;
+        return MixinEnvironment.getEnvironment(Phase.DEFAULT);
     }
 
     /**

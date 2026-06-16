@@ -1141,9 +1141,16 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
     }
 
     // AMS - temp
+
+    /**
+     * CLEANROOM: Note, as of 0.2.0, phases are being removed.
+     * A config is selected as soon as it is seen by a select pass regardless of the environment.
+     * The environment that is bounded per-configuration is retained for lookups and backwards compatibility
+     * but never considered when being selected.
+     */
     public boolean select(MixinEnvironment environment) {
         this.visited = true;
-        return this.env == environment;
+        return true;
     }
     
     // AMS - temp
