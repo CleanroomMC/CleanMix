@@ -1047,21 +1047,7 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
      */
     @Override
     public String getCleanSourceId() {
-        if (this.source == null) {
-            return null;
-        }
-        String sourceId = this.source.getId();
-        if (sourceId == null) {
-            return null;
-        }
-        StringBuilder builder = new StringBuilder(sourceId.length());
-        for (int i = 0; i < sourceId.length(); i++) {
-            char c = sourceId.charAt(i);
-            if (Character.isLetterOrDigit(c) || c == '_') {
-                builder.append(Character.toLowerCase(c));
-            }
-        }
-        return builder.toString();
+        return this.source == null ? null : IMixinConfig.cleanId(this.source.getId());
     }
 
     /**

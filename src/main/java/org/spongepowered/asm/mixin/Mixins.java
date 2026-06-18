@@ -32,6 +32,7 @@ import java.util.Set;
 import org.spongepowered.asm.logging.ILogger;
 import org.spongepowered.asm.launch.GlobalProperties;
 import org.spongepowered.asm.launch.GlobalProperties.Keys;
+import org.spongepowered.asm.mixin.extensibility.IMixinConfig;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigSource;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 import org.spongepowered.asm.mixin.transformer.ClassInfo;
@@ -186,9 +187,10 @@ public final class Mixins {
         if (ownerId == null) {
             return Collections.emptySet();
         }
+        String owner = IMixinConfig.cleanId(ownerId);
         Set<Config> owned = new LinkedHashSet<>();
         for (Config config : Config.getAllConfigs().values()) {
-            if (ownerId.equals(config.getConfig().getCleanSourceId())) {
+            if (owner.equals(config.getConfig().getCleanSourceId())) {
                 owned.add(config);
             }
         }

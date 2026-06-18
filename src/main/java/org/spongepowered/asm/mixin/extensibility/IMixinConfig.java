@@ -37,7 +37,31 @@ public interface IMixinConfig {
      * Default priority for mixin configs and mixins
      */
     public static final int DEFAULT_PRIORITY = 1000;
-    
+
+    /**
+     * ADDED BY CLEANROOM:
+     * Normalizes owner ids to lowercase ASCII alphanumerics only with no underscores, symbols or non-ASCII characters.
+     * {@link #getCleanSourceId} and owner-based lookups use this so they always compare on the same canonical form.
+     *
+     * @param id raw id (maybe null)
+     * @return the cleaned id, or null if {@code id} is null
+     */
+    public static String cleanId(String id) {
+        if (id == null) {
+            return null;
+        }
+        StringBuilder builder = new StringBuilder(id.length());
+        for (int i = 0; i < id.length(); i++) {
+            char c = id.charAt(i);
+            if (c >= '0' && c <= '9' || c >= 'a' && c <= 'z') {
+                builder.append(c);
+            } else if (c >= 'A' && c <= 'Z') {
+                builder.append((char) (c + ('a' - 'A')));
+            }
+        }
+        return builder.toString();
+    }
+
     /**
      * Get the parent environment of this config
      * 
