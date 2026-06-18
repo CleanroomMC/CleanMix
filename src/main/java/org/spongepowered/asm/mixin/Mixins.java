@@ -172,6 +172,28 @@ public final class Mixins {
         }
         return mixinConfigs;
     }
+
+    /**
+     * Get all known configs owned by the mod with the supplied id, matched against each config's
+     * {@link org.spongepowered.asm.mixin.extensibility.IMixinConfig#getCleanSourceId() clean source id}.
+     * The host (e.g. MixinBooter or the Cleanroom Loader) is responsible for ensuring a config's source
+     * id mirrors its owner id.
+     *
+     * @param ownerId owner id to search for, this would be a mod id if running in modded contexts
+     * @return configs owned by the specified owner (never null, may be empty)
+     */
+    public static Set<Config> getConfigsByOwner(String ownerId) {
+        if (ownerId == null) {
+            return Collections.emptySet();
+        }
+        Set<Config> owned = new LinkedHashSet<>();
+        for (Config config : Config.getAllConfigs().values()) {
+            if (ownerId.equals(config.getConfig().getCleanSourceId())) {
+                owned.add(config);
+            }
+        }
+        return owned;
+    }
     
     /**
      * Get information about mixins applied to the specified class in the
