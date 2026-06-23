@@ -632,7 +632,7 @@ public final class MixinEnvironment implements ITokenProvider {
                 return false;
             }
             
-            boolean local = this.getLocalBooleanValue(false);
+            boolean local = this.getLocalBooleanValue(Boolean.parseBoolean(this.defaultValue));
             if (this.inheritance == Inherit.INDEPENDENT) {
                 return local;
             }
