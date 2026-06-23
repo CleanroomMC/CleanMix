@@ -296,7 +296,7 @@ final class InnerClassGenerator implements IClassGenerator {
     /**
      * Logger
      */
-    private static final ILogger logger = MixinService.getService().getLogger("mixin");
+    private static final ILogger logger = MixinService.getService().getLogger("CleanMix");
     
     /**
      * Synthetic class registry 

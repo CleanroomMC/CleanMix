@@ -216,7 +216,7 @@ public abstract class MixinServiceAbstract implements IMixinService {
                     return this.sideName = side;
                 }
             } catch (Exception ex) {
-                this.getLogger("mixin").catching(ex);
+                this.getLogger("CleanMix").catching(ex);
             }
         }
 

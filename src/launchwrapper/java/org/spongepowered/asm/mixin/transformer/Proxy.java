@@ -70,7 +70,7 @@ public final class Proxy implements IClassTransformer, ILegacyClassTransformer {
         }
         
         Proxy.proxies.add(this);
-        MixinService.getService().getLogger("mixin").debug("Adding new mixin transformer proxy #{}", Proxy.proxies.size());
+        MixinService.getService().getLogger("CleanMix").debug("Adding new mixin transformer proxy #{}", Proxy.proxies.size());
     }
     
     @Override

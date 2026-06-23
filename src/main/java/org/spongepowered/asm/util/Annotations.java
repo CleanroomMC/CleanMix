@@ -760,7 +760,7 @@ public final class Annotations {
                 to.add(annotation);
             }
         } catch (Exception ex) {
-            MixinService.getService().getLogger("mixin").warn("Exception encountered whilst merging annotations for {} {}", type, name);
+            MixinService.getService().getLogger("CleanMix").warn("Exception encountered whilst merging annotations for {} {}", type, name);
         }
         
         return to;

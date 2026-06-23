@@ -207,7 +207,7 @@ public class InjectorGroupInfo {
                     + min + " on " + this);
         }
         if (this.minCallbackCount > 0 && this.minCallbackCount != min) {
-            MixinService.getService().getLogger("mixin").warn("Conflicting min value '{}' on @Group({}), previously specified {}", min, this.name,
+            MixinService.getService().getLogger("CleanMix").warn("Conflicting min value '{}' on @Group({}), previously specified {}", min, this.name,
                     this.minCallbackCount);
         }
         this.minCallbackCount = Math.max(this.minCallbackCount, min);
@@ -227,7 +227,7 @@ public class InjectorGroupInfo {
                     + max + " on " + this);
         }
         if (this.maxCallbackCount < Integer.MAX_VALUE && this.maxCallbackCount != max) {
-            MixinService.getService().getLogger("mixin").warn("Conflicting max value '{}' on @Group({}), previously specified {}", max, this.name,
+            MixinService.getService().getLogger("CleanMix").warn("Conflicting max value '{}' on @Group({}), previously specified {}", max, this.name,
                     this.maxCallbackCount);
         }
         this.maxCallbackCount = Math.min(this.maxCallbackCount, max);

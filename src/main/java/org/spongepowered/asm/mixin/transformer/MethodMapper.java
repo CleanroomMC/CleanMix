@@ -52,7 +52,7 @@ class MethodMapper {
     /**
      * Logger
      */
-    private static final ILogger logger = MixinService.getService().getLogger("mixin");
+    private static final ILogger logger = MixinService.getService().getLogger("CleanMix");
     
     private static final List<String> classes = new ArrayList<String>();
     

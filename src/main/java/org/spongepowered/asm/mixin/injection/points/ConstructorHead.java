@@ -110,7 +110,7 @@ public class ConstructorHead extends MethodHead {
     /**
      * Logger 
      */
-    protected final ILogger logger = MixinService.getService().getLogger("mixin");
+    protected final ILogger logger = MixinService.getService().getLogger("CleanMix");
 
     /**
      * Enforce behaviour parsed from At args

@@ -44,7 +44,7 @@ public class MixinClassGenerator {
     /**
      * Log things for stuff
      */
-    static final ILogger logger = MixinService.getService().getLogger("mixin");
+    static final ILogger logger = MixinService.getService().getLogger("CleanMix");
 
     /**
      * Transformer extensions

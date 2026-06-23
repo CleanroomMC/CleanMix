@@ -300,7 +300,7 @@ public final class MethodSlice {
     /**
      * Make with the logging already
      */
-    private static final ILogger logger = MixinService.getService().getLogger("mixin");
+    private static final ILogger logger = MixinService.getService().getLogger("CleanMix");
 
     /**
      * Owner of this slice

@@ -49,7 +49,7 @@ public final class MessageRouter {
         /**
          * Logger 
          */
-        private static final ILogger logger = MixinService.getService().getLogger("mixin");
+        private static final ILogger logger = MixinService.getService().getLogger("CleanMix");
 
         @Override
         public void printMessage(Kind kind, CharSequence msg) {

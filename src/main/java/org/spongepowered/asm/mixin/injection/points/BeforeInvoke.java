@@ -122,7 +122,7 @@ public class BeforeInvoke extends InjectionPoint {
     /**
      * Logger reference 
      */
-    protected final ILogger logger = MixinService.getService().getLogger("mixin");
+    protected final ILogger logger = MixinService.getService().getLogger("CleanMix");
 
     /**
      * True to turn on strategy debugging to the console

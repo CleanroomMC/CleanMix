@@ -154,7 +154,7 @@ abstract class MixinCoprocessor implements IListener {
         return ProcessResult.NONE;
     }
 
-    private static final ILogger logger = MixinService.getService().getLogger("mixin");
+    private static final ILogger logger = MixinService.getService().getLogger("CleanMix");
     private boolean willLogUnimplementedCouldTransform = true;
     
     /**

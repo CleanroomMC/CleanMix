@@ -64,7 +64,7 @@ final class TargetClassContext extends ClassContext implements ITargetClassConte
     /**
      * Logger
      */
-    private static final ILogger logger = MixinService.getService().getLogger("mixin");
+    private static final ILogger logger = MixinService.getService().getLogger("CleanMix");
 
     /**
      * Mixin environment

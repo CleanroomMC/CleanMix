@@ -168,7 +168,7 @@ public abstract class Injector {
     /**
      * Log more things
      */
-    protected static final ILogger logger = MixinService.getService().getLogger("mixin");
+    protected static final ILogger logger = MixinService.getService().getLogger("CleanMix");
 
     /**
      * Injection info

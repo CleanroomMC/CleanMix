@@ -58,7 +58,7 @@ public class ExtensionClassExporter implements IExtension {
     /**
      * Logger
      */
-    private static final ILogger logger = MixinService.getService().getLogger("mixin");
+    private static final ILogger logger = MixinService.getService().getLogger("CleanMix");
 
     /**
      * Directory to export classes to when debug.export is enabled

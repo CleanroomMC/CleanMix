@@ -47,7 +47,7 @@ public class Config {
     /**
      * Logger 
      */
-    private static final ILogger logger = MixinService.getService().getLogger("mixin");
+    private static final ILogger logger = MixinService.getService().getLogger("CleanMix");
     
     /**
      * All loaded configs, stored by name so that parents can be assigned

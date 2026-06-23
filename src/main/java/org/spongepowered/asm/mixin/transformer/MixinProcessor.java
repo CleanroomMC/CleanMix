@@ -144,7 +144,7 @@ public class MixinProcessor {
     /**
      * Log all the things
      */
-    static final ILogger logger = MixinService.getService().getLogger("mixin");
+    static final ILogger logger = MixinService.getService().getLogger("CleanMix");
     
     /**
      * Service 

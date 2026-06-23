@@ -205,7 +205,7 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
     /**
      * Log even more things
      */
-    private final ILogger logger = MixinService.getService().getLogger("mixin");
+    private final ILogger logger = MixinService.getService().getLogger("CleanMix");
     
     /**
      * Map of mixin target classes to mixin infos
@@ -1438,7 +1438,7 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
                 JarURLConnection conn = (JarURLConnection) resource.openConnection();
                 return new ContainerHandlePath(Paths.get(conn.getJarFileURL().toURI()));
             } catch (IOException | URISyntaxException e) {
-                service.getLogger("mixin").warn("Unable to locate resource for mixin config source: {}", configFile, e);
+                service.getLogger("CleanMix").warn("Unable to locate resource for mixin config source: {}", configFile, e);
                 return null;
             }
         }

@@ -1339,7 +1339,7 @@ public final class MixinEnvironment implements ITokenProvider {
     /**
      * Logger 
      */
-    private static final ILogger logger = MixinService.getService().getLogger("mixin");
+    private static final ILogger logger = MixinService.getService().getLogger("CleanMix");
 
     /**
      * Active transformer
@@ -1441,7 +1441,7 @@ public final class MixinEnvironment implements ITokenProvider {
             printer.kv("Service Name", serviceName);
             printer.kv("Mixin Service Class", this.service.getClass().getName());
             printer.kv("Global Property Service Class", MixinService.getGlobalPropertyService().getClass().getName());
-            printer.kv("Logger Adapter Type", MixinService.getService().getLogger("mixin").getType()).hr();
+            printer.kv("Logger Adapter Type", MixinService.getService().getLogger("CleanMix").getType()).hr();
             for (Option option : Option.values()) {
                 if (option.isHidden) {
                     continue;

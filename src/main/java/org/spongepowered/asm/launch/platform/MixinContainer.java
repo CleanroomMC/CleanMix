@@ -48,7 +48,7 @@ public class MixinContainer {
         MixinContainer.agentClasses.addAll(MixinService.getService().getPlatformAgents());
     }
     
-    private static final ILogger logger = MixinService.getService().getLogger("mixin");
+    private static final ILogger logger = MixinService.getService().getLogger("CleanMix");
     
     private final IContainerHandle handle;
     private final List<IMixinPlatformAgent> agents = new ArrayList<IMixinPlatformAgent>();

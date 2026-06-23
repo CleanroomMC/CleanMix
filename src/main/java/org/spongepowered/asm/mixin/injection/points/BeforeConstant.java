@@ -124,7 +124,7 @@ import com.google.common.primitives.Longs;
 @AtCode("CONSTANT")
 public class BeforeConstant extends InjectionPoint {
     
-    private static final ILogger logger = MixinService.getService().getLogger("mixin");
+    private static final ILogger logger = MixinService.getService().getLogger("CleanMix");
 
     /**
      * Ordinal of the target insn

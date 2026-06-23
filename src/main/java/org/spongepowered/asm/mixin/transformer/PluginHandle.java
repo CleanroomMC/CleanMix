@@ -66,7 +66,7 @@ class PluginHandle {
     
     }
     
-    private static final ILogger logger = MixinService.getService().getLogger("mixin");
+    private static final ILogger logger = MixinService.getService().getLogger("CleanMix");
 
     /**
      * Parent config which owns this plugin handle

@@ -91,7 +91,7 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
     /**
      * Logger
      */
-    private static final ILogger logger = MixinService.getService().getLogger("mixin");
+    private static final ILogger logger = MixinService.getService().getLogger("CleanMix");
     
     /**
      * Activity tracker

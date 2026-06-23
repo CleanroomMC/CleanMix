@@ -401,7 +401,7 @@ public class AccessorInfo extends SpecialMethodInfo {
     public static String inflectTarget(AccessorName name, AccessorType type, String description, ISelectorContext context, boolean verbose) {
         if (name != null) {
             if (!type.isExpectedPrefix(name.prefix) && verbose) {
-                MixinService.getService().getLogger("mixin").warn("Unexpected prefix for {}, found [{}] expecting {}", description, name.prefix,
+                MixinService.getService().getLogger("CleanMix").warn("Unexpected prefix for {}, found [{}] expecting {}", description, name.prefix,
                         type.getExpectedPrefixes());
             }
             return TargetSelector.parseName(name.name, context);

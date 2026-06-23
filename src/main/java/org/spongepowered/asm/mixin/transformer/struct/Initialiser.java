@@ -85,7 +85,7 @@ public class Initialiser {
     /**
      * Logger
      */
-    static final ILogger logger = MixinService.getService().getLogger("mixin");
+    static final ILogger logger = MixinService.getService().getLogger("CleanMix");
 
     /**
      * List of opcodes which must not appear in a class initialiser, mainly a

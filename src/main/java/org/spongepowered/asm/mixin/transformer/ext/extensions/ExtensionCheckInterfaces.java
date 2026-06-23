@@ -64,7 +64,7 @@ public class ExtensionCheckInterfaces implements IExtension {
     private static final String IMPL_REPORT_CSV_FILENAME = ExtensionCheckInterfaces.IMPL_REPORT_FILENAME + ".csv";
     private static final String IMPL_REPORT_TXT_FILENAME = ExtensionCheckInterfaces.IMPL_REPORT_FILENAME + ".txt";
 
-    private static final ILogger logger = MixinService.getService().getLogger("mixin");
+    private static final ILogger logger = MixinService.getService().getLogger("CleanMix");
 
     /**
      * CSV Report file

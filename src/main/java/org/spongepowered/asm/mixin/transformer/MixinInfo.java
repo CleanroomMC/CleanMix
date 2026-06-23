@@ -757,7 +757,7 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
     /**
      * Logger
      */
-    private final transient ILogger logger = MixinService.getService().getLogger("mixin");
+    private final transient ILogger logger = MixinService.getService().getLogger("CleanMix");
     
     /**
      * Profiler 

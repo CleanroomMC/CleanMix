@@ -143,7 +143,7 @@ class MixinApplicatorStandard {
     /**
      * Log more things
      */
-    protected final ILogger logger = MixinService.getService().getLogger("mixin");
+    protected final ILogger logger = MixinService.getService().getLogger("CleanMix");
     
     /**
      * Target class context 

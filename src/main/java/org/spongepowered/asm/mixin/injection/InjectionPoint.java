@@ -928,7 +928,7 @@ public abstract class InjectionPoint {
                 by, context, method.name, limitBreached, allowed, advice);
         
         if (err == ShiftByViolationBehaviour.WARN && allowed < InjectionPoint.MAX_ALLOWED_SHIFT_BY) {
-            MixinService.getService().getLogger("mixin").warn(message);
+            MixinService.getService().getLogger("CleanMix").warn(message);
             return;
         }
 
@@ -971,10 +971,10 @@ public abstract class InjectionPoint {
         
         Class<? extends InjectionPoint> existing = InjectionPoint.types.get(code.value());
         if (existing != null && !existing.equals(type)) {
-            MixinService.getService().getLogger("mixin").debug("Overriding InjectionPoint {} with {} (previously {})", code.value(), type.getName(),
+            MixinService.getService().getLogger("CleanMix").debug("Overriding InjectionPoint {} with {} (previously {})", code.value(), type.getName(),
                     existing.getName());
         } else if (Strings.isNullOrEmpty(namespace)) {
-            MixinService.getService().getLogger("mixin").warn("Registration of InjectionPoint {} with {} without specifying namespace is deprecated.",
+            MixinService.getService().getLogger("CleanMix").warn("Registration of InjectionPoint {} with {} without specifying namespace is deprecated.",
                     code.value(), type.getName());
         }
         

@@ -49,7 +49,7 @@ public final class Mixins {
     /**
      * Logger 
      */
-    private static final ILogger logger = MixinService.getService().getLogger("mixin");
+    private static final ILogger logger = MixinService.getService().getLogger("CleanMix");
 
     /**
      * GlobalProperties key storing mixin configs which are pending

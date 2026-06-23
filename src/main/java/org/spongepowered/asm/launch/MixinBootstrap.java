@@ -86,7 +86,7 @@ public abstract class MixinBootstrap {
     static {
         MixinService.boot();
         MixinService.getService().prepare();
-        MixinBootstrap.logger = MixinService.getService().getLogger("mixin");
+        MixinBootstrap.logger = MixinService.getService().getLogger("CleanMix");
     }
 
     /**

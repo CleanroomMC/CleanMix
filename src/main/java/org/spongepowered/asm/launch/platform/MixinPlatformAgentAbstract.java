@@ -40,7 +40,7 @@ public abstract class MixinPlatformAgentAbstract implements IMixinPlatformAgent 
     /**
      * Logger 
      */
-    protected static final ILogger logger = MixinService.getService().getLogger("mixin");
+    protected static final ILogger logger = MixinService.getService().getLogger("CleanMix");
     
     protected MixinPlatformManager manager;
     

@@ -42,7 +42,7 @@ public class MixinConnectorManager {
     /**
      * Logging to the max
      */
-    private static final ILogger logger = MixinService.getService().getLogger("mixin");
+    private static final ILogger logger = MixinService.getService().getLogger("CleanMix");
     
     private final Set<String> connectorClasses = new LinkedHashSet<String>();
 

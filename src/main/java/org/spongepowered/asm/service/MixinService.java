@@ -202,7 +202,7 @@ public final class MixinService {
         if (this.service == null) {
             try {
                 this.service = this.initService();
-                ILogger serviceLogger = this.service.getLogger("mixin");
+                ILogger serviceLogger = this.service.getLogger("CleanMix");
                 MixinService.logBuffer.flush(serviceLogger);
             } catch (Error err) {
                 ILogger defaultLogger = MixinService.<ILogger>getDefaultLogger();
@@ -306,7 +306,7 @@ public final class MixinService {
      */
     @SuppressWarnings("unchecked")
     private static <T> T getDefaultLogger() {
-        return (T)new LoggerAdapterConsole("mixin").setDebugStream(System.err);
+        return (T)new LoggerAdapterConsole("CleanMix").setDebugStream(System.err);
     }
 
 }

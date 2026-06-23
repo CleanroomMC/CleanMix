@@ -56,7 +56,7 @@ public class MixinPlatformManager {
     /**
      * Make with the logging already
      */
-    private static final ILogger logger = MixinService.getService().getLogger("mixin");
+    private static final ILogger logger = MixinService.getService().getLogger("CleanMix");
     
     /**
      * Bootstrap delegate 

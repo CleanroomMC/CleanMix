@@ -149,7 +149,7 @@ public class InsnFinder {
     /**
      * Log more things
      */
-    private static final ILogger logger = MixinService.getService().getLogger("mixin");
+    private static final ILogger logger = MixinService.getService().getLogger("CleanMix");
     
     /**
      * Find the instruction which pops the value pushed by the specified

@@ -64,7 +64,7 @@ public abstract class AccessorGenerator {
             if (!this.targetIsStatic) {
                 throw new InvalidAccessorException(this.info, String.format("%s is invalid. Accessor method is static but the target is not.", this.info));
             } else {
-                MixinService.getService().getLogger("mixin").info("{} should be static as its target is", this.info);
+                MixinService.getService().getLogger("CleanMix").info("{} should be static as its target is", this.info);
             }
         }
     }

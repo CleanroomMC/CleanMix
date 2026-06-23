@@ -48,7 +48,7 @@ public final class RemappingReferenceMapper implements IClassReferenceMapper, IR
     /**
      * Logger
      */
-    private static final ILogger logger = MixinService.getService().getLogger("mixin");
+    private static final ILogger logger = MixinService.getService().getLogger("CleanMix");
     
     /**
      * The "inner" refmap, this is the original refmap specified in the config
