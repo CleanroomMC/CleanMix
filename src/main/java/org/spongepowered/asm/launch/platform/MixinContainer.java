@@ -56,7 +56,7 @@ public class MixinContainer {
     public MixinContainer(MixinPlatformManager manager, IContainerHandle handle) {
         this.handle = handle;
 
-        boolean allowDefaultAgentToAccept = false;
+        boolean allowDefaultAgentToAccept = MixinContainer.agentClasses.isEmpty();
         for (String agentClass : MixinContainer.agentClasses) {
             try {
                 @SuppressWarnings("unchecked")
