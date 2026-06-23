@@ -186,7 +186,7 @@ public abstract class MixinBootstrap {
             throw new IllegalStateException("MixinBootstrap.doInit() called before MixinBootstrap.start()");
         }
 
-        MixinBootstrap.getPlatform().getPhaseProviderClasses();
+//        MixinBootstrap.getPlatform().getPhaseProviderClasses();
 //        for (String platformProviderClass : MixinBootstrap.getPlatform().getPhaseProviderClasses()) {
 //            System.err.printf("Registering %s\n", platformProviderClass);
 //            MixinEnvironment.registerPhaseProvider(platformProviderClass);
