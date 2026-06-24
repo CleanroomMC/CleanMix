@@ -25,6 +25,7 @@
 package org.spongepowered.asm.service.mojang;
 
 import org.spongepowered.asm.logging.Level;
+import org.spongepowered.asm.service.MixinService;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -41,8 +42,8 @@ import java.time.format.DateTimeFormatter;
  * A self-contained sink that mirrors mixin activity into a dedicated log file under {@code logs/}, separate from
  * the global game log. The file name and the disable-property are supplied by the owning service. A plain file
  * writer is used rather than a runtime Log4j2 appender (which would need awkward reflection).
- * <p>
- * The file is opened lazily on first write and flushed after every entry, so it survives a hard crash. All
+ *
+ * <p>The file is opened lazily on first write and flushed after every entry, so it survives a hard crash. All
  * methods are safe against I/O failure and never throw. Backs {@link MixinAuditTrailRecorder}, but is public so
  * a service may tee its own diagnostics (e.g. a class-load tracer) into the same file.
  */
@@ -78,11 +79,17 @@ public class MixinAuditFile {
                     new FileOutputStream(new File(dir, this.fileName), false), StandardCharsets.UTF_8));
             Runtime.getRuntime().addShutdownHook(new Thread(this::close, this.fileName + "/LogCloser"));
         } catch (Throwable t) {
-            System.err.println("Unable to open logs/" + this.fileName + ": " + t);
+            MixinService.getService().getLogger("CleanMix").error("Unable to open logs/{}:", this.fileName, t);
         }
     }
 
-    /** Append a single entry, flushing immediately so the file survives a hard crash. Never throws. */
+    /**
+     * Append a single entry, flushing immediately so the file survives a hard crash. Never throws.
+     * @param level   level of logging
+     * @param name    name of the logger
+     * @param message message (pre-formatted)
+     * @param t       any exception that should be logged with the message
+     */
     public void write(Level level, String name, String message, Throwable t) {
         synchronized (this) {
             if (!this.opened) {
@@ -106,7 +113,9 @@ public class MixinAuditFile {
                     pw.flush(); // flush only; closing would close the underlying writer
                 }
                 this.writer.flush();
-            } catch (IOException ignored) { }
+            } catch (IOException ignored) {
+
+            }
         }
     }
 
