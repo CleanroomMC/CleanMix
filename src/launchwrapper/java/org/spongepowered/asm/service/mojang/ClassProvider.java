@@ -24,45 +24,34 @@
  */
 package org.spongepowered.asm.service.mojang;
 
-import net.minecraft.launchwrapper.IClassTransformer;
+import net.minecraft.launchwrapper.Launch;
 import org.spongepowered.asm.service.IClassProvider;
-import org.spongepowered.asm.service.ILegacyClassTransformer;
-import org.spongepowered.asm.service.MixinService;
 
-import java.lang.annotation.Annotation;
+import java.net.URL;
 
-public class LaunchWrapperTransformerHandle implements ILegacyClassTransformer {
+/**
+ * Generic LaunchWrapper {@link IClassProvider}.
+ */
+final class ClassProvider implements IClassProvider {
 
-    /**
-     * Wrapped transformer
-     */
-    private final IClassTransformer transformer;
-
-    public LaunchWrapperTransformerHandle(IClassTransformer transformer) {
-        this.transformer = transformer;
+    @Override
+    public URL[] getClassPath() {
+        return Launch.classLoader.getSources().toArray(new URL[0]);
     }
 
     @Override
-    public String getName() {
-        return this.transformer.getClass().getName();
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public boolean isDelegationExcluded() {
-        try {
-            IClassProvider classProvider = MixinService.getService().getClassProvider();
-            Class<? extends Annotation> clResource = (Class<? extends Annotation>) classProvider.findClass("javax.annotation.Resource");
-            return this.transformer.getClass().getAnnotation(clResource) != null;
-        } catch (ClassNotFoundException ex) {
-            return false;
-        }
+    public Class<?> findClass(String name) throws ClassNotFoundException {
+        return Launch.classLoader.findClass(name);
     }
 
     @Override
-    public byte[] transformClassBytes(String name, String transformedName, byte[] basicClass) {
-        return this.transformer.transform(name, transformedName, basicClass);
+    public Class<?> findClass(String name, boolean initialize) throws ClassNotFoundException {
+        return Class.forName(name, initialize, Launch.classLoader);
+    }
+
+    @Override
+    public Class<?> findAgentClass(String name, boolean initialize) throws ClassNotFoundException {
+        return Class.forName(name, initialize, Launch.class.getClassLoader());
     }
 
 }
-

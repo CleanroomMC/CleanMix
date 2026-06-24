@@ -72,6 +72,7 @@ public class Blackboard implements IGlobalPropertyService {
         public String toString() {
             return this.key;
         }
+
     }
 
 }

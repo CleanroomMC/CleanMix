@@ -28,20 +28,14 @@ import java.io.File;
 import java.util.List;
 
 import org.spongepowered.asm.launch.MixinBootstrap;
-import org.spongepowered.asm.mixin.MixinEnvironment.Phase;
 
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.LaunchClassLoader;
 
-/**
- * Tweaker used to notify the environment when we transition from preinit to
- * default
- */
 public class EnvironmentStateTweaker implements ITweaker {
 
     @Override
-    public void acceptOptions(List<String> args, File gameDir, File assetsDir, String profile) {
-    }
+    public void acceptOptions(List<String> args, File gameDir, File assetsDir, String profile) { }
 
     @Override
     public void injectIntoClassLoader(LaunchClassLoader classLoader) {
@@ -55,7 +49,6 @@ public class EnvironmentStateTweaker implements ITweaker {
 
     @Override
     public String[] getLaunchArguments() {
-        MixinEnvironment.gotoPhase(Phase.DEFAULT);
         return new String[0];
     }
     
