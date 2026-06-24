@@ -22,7 +22,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.spongepowered.asm.obfuscation.mapping.remap;
+package org.spongepowered.asm.obfuscation.mapping.mcp;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Strings;
