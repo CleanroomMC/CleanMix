@@ -77,7 +77,7 @@ public abstract class AbstractMixinServiceLaunchWrapper extends MixinServiceAbst
         if (isDevelopment()) {
             System.setProperty("mixin.env.remapRefMap", "true");
         }
-        return MixinEnvironment.Phase.DEFAULT;
+        return MixinEnvironment.Phase.PREINIT;
     }
 
     @Override
