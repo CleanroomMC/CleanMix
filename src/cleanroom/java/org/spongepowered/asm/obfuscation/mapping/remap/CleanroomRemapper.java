@@ -76,7 +76,7 @@ public class CleanroomRemapper<T extends Remapper & Unmapper> implements IRemapp
     public String map(String typeName) {
         logger.debug("Remapping class {}", typeName);
         if (typeName == null) {
-            return typeName;
+            return null;
         }
         return this.remapper.map(typeName);
     }
@@ -84,7 +84,7 @@ public class CleanroomRemapper<T extends Remapper & Unmapper> implements IRemapp
     @Override
     public String unmap(String typeName) {
         if (typeName == null) {
-            return typeName;
+            return null;
         }
         return this.remapper.unmap(typeName);
     }
@@ -92,7 +92,7 @@ public class CleanroomRemapper<T extends Remapper & Unmapper> implements IRemapp
     @Override
     public String mapDesc(String desc) {
         if (desc == null) {
-            return desc;
+            return null;
         }
         return this.remapper.mapDesc(desc);
     }
@@ -100,7 +100,7 @@ public class CleanroomRemapper<T extends Remapper & Unmapper> implements IRemapp
     @Override
     public String unmapDesc(String desc) {
         if (desc == null) {
-            return desc;
+            return null;
         }
         String newDesc = ObfuscationUtil.unmapDescriptor(desc, this);
         return newDesc != null ? newDesc : desc;
