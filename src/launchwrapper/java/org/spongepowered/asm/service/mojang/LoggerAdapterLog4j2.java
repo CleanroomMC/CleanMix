@@ -30,17 +30,17 @@ import org.spongepowered.asm.logging.Level;
 import org.spongepowered.asm.logging.LoggerAdapterAbstract;
 
 public class LoggerAdapterLog4j2 extends LoggerAdapterAbstract {
-    
-    private static final org.apache.logging.log4j.Level[] LEVELS = {
-        /* FATAL = */ org.apache.logging.log4j.Level.FATAL,
-        /* ERROR = */ org.apache.logging.log4j.Level.ERROR,
-        /* WARN =  */ org.apache.logging.log4j.Level.WARN,
-        /* INFO =  */ org.apache.logging.log4j.Level.INFO,
-        /* DEBUG = */ org.apache.logging.log4j.Level.DEBUG,
-        /* TRACE = */ org.apache.logging.log4j.Level.TRACE
+
+    protected static final org.apache.logging.log4j.Level[] LEVELS = {
+        org.apache.logging.log4j.Level.FATAL,
+        org.apache.logging.log4j.Level.ERROR,
+        org.apache.logging.log4j.Level.WARN,
+        org.apache.logging.log4j.Level.INFO,
+        org.apache.logging.log4j.Level.DEBUG,
+        org.apache.logging.log4j.Level.TRACE
     };
     
-    private final Logger logger;
+    protected final Logger logger;
 
     public LoggerAdapterLog4j2(String name) {
         super(name);

@@ -174,7 +174,7 @@ public abstract class AbstractMixinServiceLaunchWrapper extends MixinServiceAbst
 
     @Override
     protected ILogger createLogger(String name) {
-        return new LoggerAdapterLog4j2(name);
+        return this.auditLog() == null ? new LoggerAdapterLog4j2(name) : new Log4j2AuditingAdapter(name, this.auditLog());
     }
 
     /**
