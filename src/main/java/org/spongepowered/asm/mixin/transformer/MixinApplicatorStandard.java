@@ -326,7 +326,8 @@ class MixinApplicatorStandard {
                 break;
 
             case INITIALISER_APPLY:
-                Supplier<Clinit> targetClinit = Suppliers.memoize(this::prepareOrCreateClinit);
+                // ::get here for older guava versions
+                Supplier<Clinit> targetClinit = Suppliers.memoize(this::prepareOrCreateClinit)::get;
                 this.processMixins(mixinContexts, (activity, mixin) -> {
                     if (FabricUtil.getCompatibility(mixin) >= FabricUtil.COMPATIBILITY_0_17_1) {
                         activity.next("Apply Initialisers");
