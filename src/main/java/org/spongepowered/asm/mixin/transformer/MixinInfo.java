@@ -563,7 +563,6 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
                     if (!targetClass.hasSuperClass(classNode.superName, ClassInfo.Traversal.SUPER)) {
                         ClassInfo superClass = ClassInfo.forName(classNode.superName);
                         if (superClass != null && superClass.isMixin()) {
-                            // If superclass is a mixin, check for hierarchy derp
                             for (ClassInfo superTarget : superClass.getTargets()) {
                                 if (targetClasses.contains(superTarget)) {
                                     throw new InvalidMixinException(this.mixin, "Illegal hierarchy detected. Derived mixin " + this
@@ -571,8 +570,10 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
                                             + superClass.getClassName());
                                 }
                             }
+                            this.detached = true;
+                            continue;
                         }
-                        
+
                         throw new InvalidMixinException(this.mixin, "Super class '" + classNode.superName.replace('/', '.') + "' of "
                                 + this.mixin.getName() + " was not found in the hierarchy of target class '" + targetClass + "'");
                     }
