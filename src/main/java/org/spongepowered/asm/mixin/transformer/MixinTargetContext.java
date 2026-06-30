@@ -877,6 +877,12 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
             // Must be to an interface, no need to re-parent.
             return;
         }
+
+        if (this.detachedSuper) {
+            methodRef.setOwner(this.getTarget().getClassNode().superName);
+            return;
+        }
+
         this.updateBinding(method, methodRef, Traversal.SUPER);
     }
 
