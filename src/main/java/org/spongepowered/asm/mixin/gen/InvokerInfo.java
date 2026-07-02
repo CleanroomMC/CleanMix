@@ -69,7 +69,7 @@ class InvokerInfo extends AccessorInfo {
     
     private AccessorType initType(String targetName, String targetClassName) {
         if (Constants.CTOR.equals(targetName) || targetClassName.equals(targetName)) {
-            if (!this.returnType.equals(this.mixin.getTargetClassInfo().getType())) {
+            if (!this.coerceReturnType && !this.returnType.equals(this.mixin.getTargetClassInfo().getType())) {
                 throw new InvalidAccessorException(this.mixin,
                         String.format("%s appears to have an invalid return type. %s requires matching return type. Found %s expected %s",
                         this, AccessorType.OBJECT_FACTORY, Bytecode.getSimpleName(this.returnType), this.mixin.getTargetClassInfo().getSimpleName()));
@@ -94,8 +94,9 @@ class InvokerInfo extends AccessorInfo {
         if (this.type == AccessorType.OBJECT_FACTORY) {
             return new MemberInfo(Constants.CTOR, null, Bytecode.changeDescriptorReturnType(this.method.desc, "V"));
         }
-        
-        return new MemberInfo(this.getTargetName(this.specifiedName), null, this.method.desc);
+
+        String desc = this.coerceReturnType ? null : this.method.desc;
+        return new MemberInfo(this.getTargetName(this.specifiedName), null, desc);
     }
 
     @Override
