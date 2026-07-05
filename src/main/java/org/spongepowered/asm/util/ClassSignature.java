@@ -88,7 +88,12 @@ public class ClassSignature {
          * Current name (conformed)
          */
         private String currentName;
-        
+
+        /**
+         * True if merged in from another signature, not declared by the class itself
+         */
+        private boolean merged;
+
         TypeVar(String name) {
             this.currentName = this.originalName = name;
         }
@@ -109,6 +114,14 @@ public class ClassSignature {
         
         void rename(String name) {
             this.currentName = name;
+        }
+
+        boolean isMerged() {
+            return this.merged;
+        }
+
+        void setMerged() {
+            this.merged = true;
         }
         
         public boolean matches(String originalName) {
@@ -1127,22 +1140,30 @@ public class ClassSignature {
     }
     
     /**
-     * Merges another class signature into this one. The other signature is
-     * first conformed so that no formal type parameters overlap with formal
-     * type parameters defined on this signature. No attempt is made to combine
-     * formal type parameters, this method merely ensures that parameters do
-     * not overlap.
-     * 
+     * Merges another class signature into this one.
+     * Formal type parameters matching a parameter (by name) declared by this class itself are
+     * unified with it rather than added, preserving the declared parameter count (SpongePowered/Mixin#254).
+     * Remaining parameters are conformed to avoid overlap and appended.
+     *
      * @param other Class signature to merge into this one
      */
     public void merge(ClassSignature other) {
+        Set<TypeVar> unified = new HashSet<TypeVar>();
         try {
             Set<String> typeVars = new HashSet<String>();
             for (TypeVar typeVar : this.types.keySet()) {
                 typeVars.add(typeVar.toString());
             }
-            
-            other.conform(typeVars);
+
+            for (TypeVar otherVar : other.types.keySet()) {
+                TypeVar declared = this.getDeclaredTypeVar(otherVar.getOriginalName());
+                if (declared != null) {
+                    otherVar.rename(declared.toString());
+                    unified.add(otherVar);
+                }
+            }
+
+            other.conform(typeVars, unified);
         } catch (IllegalStateException ex) {
             // Oh crap, this means we couldn't conform one or more type params!
             ex.printStackTrace();
@@ -1150,16 +1171,37 @@ public class ClassSignature {
         }
 
         for (Entry<TypeVar, TokenHandle> type : other.types.entrySet()) {
-            this.addTypeVar(type.getKey(), type.getValue());
+            if (!unified.contains(type.getKey())) {
+                type.getKey().setMerged();
+                this.addTypeVar(type.getKey(), type.getValue());
+            }
         }
-        
+
         for (Token iface : other.interfaces) {
             this.addInterface(iface);
         }
     }
 
-    private void conform(Set<String> typeVars) {
+    /**
+     * Get the type var declared by this class itself (not merged in) with the supplied original name
+     *
+     * @param originalName original type var name to look up
+     * @return matching declared type var or null
+     */
+    private TypeVar getDeclaredTypeVar(String originalName) {
         for (TypeVar typeVar : this.types.keySet()) {
+            if (!typeVar.isMerged() && typeVar.matches(originalName)) {
+                return typeVar;
+            }
+        }
+        return null;
+    }
+
+    private void conform(Set<String> typeVars, Set<TypeVar> exclude) {
+        for (TypeVar typeVar : this.types.keySet()) {
+            if (exclude.contains(typeVar)) {
+                continue;
+            }
             String name = this.findUniqueName(typeVar.getOriginalName(), typeVars);
             typeVar.rename(name);
             typeVars.add(name);
@@ -1210,7 +1252,7 @@ public class ClassSignature {
     }
 
     /**
-     * Find an offset name for a single-char typevar.
+     * Find an offset name for a single-char type var.
      * 
      * @param c type var
      * @param typeVars existing type var
