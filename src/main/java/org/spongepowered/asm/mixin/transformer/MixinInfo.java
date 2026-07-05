@@ -219,9 +219,14 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
          * Interfaces soft-implemented using {@link Implements}
          */
         protected final List<InterfaceInfo> softImplements = new ArrayList<InterfaceInfo>();
+
+        /**
+         * Synthetic inner classes
+         */
+        protected final Set<String> syntheticInnerClasses = new HashSet<String>();
         
         /**
-         * Inner classes
+         * Non-synthetic inner classes
          */
         protected final Set<String> innerClasses = new HashSet<String>();
         
@@ -274,6 +279,10 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
 
         List<? extends InterfaceInfo> getSoftImplements() {
             return this.softImplements;
+        }
+        
+        Set<String> getSyntheticInnerClasses() {
+            return this.syntheticInnerClasses;
         }
         
         Set<String> getInnerClasses() {
@@ -406,13 +415,20 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
         }
 
         /**
-         * Read inner class definitions for the class and locate any of our inner classes.
+         * Read inner class definitions for the class and locate any synthetic
+         * inner classes so that we can add them to the passthrough set in our
+         * parent config.
          */
         void readInnerClasses() {
             for (InnerClassNode inner : this.validationClassNode.innerClasses) {
                 if ((inner.outerName != null && inner.outerName.equals(this.classInfo.getName()))
                         || inner.name.startsWith(this.validationClassNode.name + "$")) {
-                    if (!ClassInfo.isMixin(inner.name)) {
+                    boolean isStatic = (inner.access & Opcodes.ACC_STATIC) != 0;
+                    boolean isSynthetic = (inner.access & Opcodes.ACC_SYNTHETIC) != 0;
+
+                    if (isStatic && isSynthetic) {
+                        this.syntheticInnerClasses.add(inner.name);
+                    } else if (!ClassInfo.isMixin(inner.name)) {
                         this.innerClasses.add(inner.name);
                     }
                 }
@@ -445,7 +461,7 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
          */
         @Override
         protected void validateChanges(SubType type, List<ClassInfo> targetClasses) {
-            if (!this.innerClasses.equals(this.previous.innerClasses)) {
+            if (!this.syntheticInnerClasses.equals(this.previous.syntheticInnerClasses)) {
                 throw new MixinReloadException(MixinInfo.this, "Cannot change inner classes");
             }
             if (!this.interfaces.equals(this.previous.interfaces)) {
@@ -1276,9 +1292,16 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
     List<InterfaceInfo> getSoftImplements() {
         return Collections.<InterfaceInfo>unmodifiableList(this.getState().getSoftImplements());
     }
+
+    /**
+     * Get the synthetic inner classes for this mixin
+     */
+    Set<String> getSyntheticInnerClasses() {
+        return Collections.<String>unmodifiableSet(this.getState().getSyntheticInnerClasses());
+    }
     
     /**
-     * Get the inner classes for this mixin
+     * Get the user-defined inner classes for this mixin
      */
     Set<String> getInnerClasses() {
         return Collections.<String>unmodifiableSet(this.getState().getInnerClasses());
