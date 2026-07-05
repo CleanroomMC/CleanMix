@@ -258,16 +258,6 @@ public abstract class MixinServiceAbstract implements IMixinService {
         return new LoggerAdapterDefault(name);
     }
 
-    // AMS - TEMP WIRING TO AVOID THE COMPLEXITY OF MERGING MULTIPHASE WITH 0.8
-    
-    /**
-     * Temp wiring. Called when the initial phase is spun up in the environment.
-     * 
-     * @param phase Initial phase
-     * @param phaseConsumer Delegate for the service (or agents) to trigger
-     *      later phases
-     * @deprecated temporary
-     */
     @Deprecated
     public void wire(Phase phase, IConsumer<Phase> phaseConsumer) {
         for (IMixinPlatformServiceAgent agent : this.getServiceAgents()) {
@@ -275,10 +265,6 @@ public abstract class MixinServiceAbstract implements IMixinService {
         }
     }
 
-    /**
-     * Temp wiring. Called when the default phase is started in the environment.
-     * @deprecated temporary
-     */
     @Deprecated
     public void unwire() {
         for (IMixinPlatformServiceAgent agent : this.getServiceAgents()) {

@@ -51,9 +51,7 @@ import org.spongepowered.asm.service.IMixinService;
 import org.spongepowered.asm.service.ITransformer;
 import org.spongepowered.asm.service.ITransformerProvider;
 import org.spongepowered.asm.service.MixinService;
-import org.spongepowered.asm.service.MixinServiceAbstract;
 import org.spongepowered.asm.util.Constants;
-import org.spongepowered.asm.util.IConsumer;
 import org.spongepowered.asm.util.ITokenProvider;
 import org.spongepowered.asm.util.JavaVersion;
 import org.spongepowered.asm.util.LanguageFeatures;
@@ -73,11 +71,6 @@ public final class MixinEnvironment implements ITokenProvider {
      * Environment phase, deliberately not implemented as an enum
      */
     public static final class Phase {
-        
-        /**
-         * Not initialised phase 
-         */
-        static final Phase NOT_INITIALISED = new Phase(-1, "NOT_INITIALISED");
         
         /**
          * "Pre initialisation" phase, everything before the tweak system begins
@@ -146,10 +139,6 @@ public final class MixinEnvironment implements ITokenProvider {
         }
 
         MixinEnvironment getEnvironment() {
-            if (this.ordinal < 0) {
-                throw new IllegalArgumentException("Cannot access the NOT_INITIALISED environment");
-            }
-            
             if (this.environment == null) {
                 this.environment = new MixinEnvironment(this);
             }
@@ -1304,28 +1293,10 @@ public final class MixinEnvironment implements ITokenProvider {
     }
 
     /**
-     * Phase setter callback delegate
+     * Whether the environment has been initialised
      */
-    static class PhaseConsumer implements IConsumer<Phase> {
+    private static boolean initialised;
 
-        @Override
-        public void accept(Phase phase) {
-            MixinEnvironment.gotoPhase(phase);
-        }
-        
-    }
-    
-    /**
-     * Currently active environment
-     */
-    private static MixinEnvironment currentEnvironment;
-
-    /**
-     * Current (active) environment phase, set to NOT_INITIALISED until the
-     * phases have been populated
-     */
-    private static Phase currentPhase = Phase.NOT_INITIALISED;
-    
     /**
      * Current compatibility level
      */
@@ -1778,33 +1749,15 @@ public final class MixinEnvironment implements ITokenProvider {
     }
     
     /**
-     * Get the current phase, triggers initialisation if necessary
-     */
-    private static Phase getCurrentPhase() {
-        if (MixinEnvironment.currentPhase == Phase.NOT_INITIALISED) {
-            MixinEnvironment.init(Phase.PREINIT);
-        }
-        
-        return MixinEnvironment.currentPhase;
-    }
-    
-    /**
      * Initialise the mixin environment in the specified phase
-     * 
+     *
      * @param phase initial phase
      */
-    @SuppressWarnings("deprecation")
     public static void init(Phase phase) {
-        if (MixinEnvironment.currentPhase == Phase.NOT_INITIALISED) {
-            MixinEnvironment.currentPhase = phase;
+        if (!MixinEnvironment.initialised) {
+            MixinEnvironment.initialised = true;
             MixinEnvironment env = MixinEnvironment.getEnvironment(phase);
             Profiler.setActive(env.getOption(Option.DEBUG_PROFILER));
-            
-            // AMS - Temp wiring to avoid merging multiphase
-            IMixinService service = MixinService.getService();
-            if (service instanceof MixinServiceAbstract) {
-                ((MixinServiceAbstract)service).wire(phase, new PhaseConsumer());
-            }
         }
     }
     
@@ -1907,30 +1860,8 @@ public final class MixinEnvironment implements ITokenProvider {
     public static Profiler getProfiler() {
         return Profiler.getProfiler("mixin");
     }
-    
-    /**
-     * Internal callback
-     * 
-     * @param phase phase to go to 
-     */
+
     @SuppressWarnings("deprecation")
     static void gotoPhase(Phase phase) {
-        if (phase == null || phase.ordinal < 0) {
-            throw new IllegalArgumentException("Cannot go to the specified phase, phase is null or invalid");
-        }
-        
-        IMixinService service = MixinService.getService();
-        if (phase.ordinal > MixinEnvironment.getCurrentPhase().ordinal) {
-            service.beginPhase();
-        }
-        
-        MixinEnvironment.currentPhase = phase;
-        MixinEnvironment.currentEnvironment = MixinEnvironment.getEnvironment(MixinEnvironment.getCurrentPhase());
-
-        // AMS - Temp wiring to avoid merging multiphase
-        if (service instanceof MixinServiceAbstract && phase == Phase.DEFAULT) {
-            ((MixinServiceAbstract)service).unwire();
-        }
-        
     }
 }

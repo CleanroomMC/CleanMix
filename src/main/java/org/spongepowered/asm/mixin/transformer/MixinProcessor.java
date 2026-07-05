@@ -495,8 +495,7 @@ public class MixinProcessor {
             return;
         }
         
-        int unvisitedCount = Mixins.getUnvisitedCount();
-        if (unvisitedCount > 0 && this.transformedCount == 0) {
+        if (Mixins.getUnvisitedCount() > 0) {
             this.select(environment);
         }
     }
