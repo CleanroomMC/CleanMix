@@ -25,9 +25,11 @@
 package org.spongepowered.asm.mixin.gen;
 
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.FieldInsnNode;
 import org.objectweb.asm.tree.InsnNode;
 import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.TypeInsnNode;
 import org.objectweb.asm.tree.VarInsnNode;
 import org.spongepowered.asm.mixin.MixinEnvironment;
 import org.spongepowered.asm.mixin.gen.throwables.InvalidAccessorException;
@@ -99,6 +101,9 @@ public class AccessorGeneratorFieldSetter extends AccessorGeneratorField {
             method.instructions.add(new VarInsnNode(Opcodes.ALOAD, 0));
         }
         method.instructions.add(new VarInsnNode(this.targetType.getOpcode(Opcodes.ILOAD), stackSpace));
+        if (this.info.isCoerceReturnType() && this.targetType.getSort() == Type.OBJECT) {
+            method.instructions.add(new TypeInsnNode(Opcodes.CHECKCAST, this.targetType.getInternalName()));
+        }
         int opcode = this.targetIsStatic ? Opcodes.PUTSTATIC : Opcodes.PUTFIELD;
         method.instructions.add(new FieldInsnNode(opcode, this.info.getTargetClassNode().name, this.targetField.name, this.targetField.desc));
         method.instructions.add(new InsnNode(Opcodes.RETURN));
