@@ -38,6 +38,7 @@ import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.spongepowered.asm.mixin.MixinEnvironment.Option;
 import org.spongepowered.asm.mixin.gen.throwables.InvalidAccessorException;
+import org.spongepowered.asm.mixin.injection.Coerce;
 import org.spongepowered.asm.mixin.injection.selectors.ElementNode;
 import org.spongepowered.asm.mixin.injection.selectors.ISelectorContext;
 import org.spongepowered.asm.mixin.injection.selectors.ITargetSelector;
@@ -251,6 +252,11 @@ public class AccessorInfo extends SpecialMethodInfo {
      * Accessor method staticness
      */
     protected final boolean isStatic;
+
+    /**
+     * Whether the return type should be coerced to a supertype
+     */
+    protected final boolean coerceReturnType;
     
     /**
      * Name specified in the attached annotation, can be null 
@@ -300,6 +306,7 @@ public class AccessorInfo extends SpecialMethodInfo {
         this.argTypes = Type.getArgumentTypes(method.desc);
         this.returnType = Type.getReturnType(method.desc);
         this.isStatic = Bytecode.isStatic(method);
+        this.coerceReturnType = Annotations.getInvisible(method, Coerce.class) != null;
         this.specifiedName = Annotations.<String>getValue(this.annotation);
         this.type = this.initType();
         this.targetFieldType = this.initTargetFieldType();
@@ -334,7 +341,8 @@ public class AccessorInfo extends SpecialMethodInfo {
     }
 
     protected ITargetSelector initTarget() {
-        return new MemberInfo(this.getTargetName(this.specifiedName), null, this.targetFieldType.getDescriptor());
+        String desc = this.coerceReturnType ? null : (this.targetFieldType != null ? this.targetFieldType.getDescriptor() : null);
+        return new MemberInfo(this.getTargetName(this.specifiedName), null, desc);
     }
 
     protected String getTargetName(String name) {
@@ -458,6 +466,13 @@ public class AccessorInfo extends SpecialMethodInfo {
      */
     public boolean isStatic() {
         return this.isStatic;
+    }
+
+    /**
+     * Get whether the return type is coerced
+     */
+    public boolean isCoerceReturnType() {
+        return this.coerceReturnType;
     }
 
     @Override

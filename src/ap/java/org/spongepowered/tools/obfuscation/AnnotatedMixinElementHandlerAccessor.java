@@ -32,6 +32,7 @@ import javax.lang.model.type.TypeMirror;
 import org.spongepowered.asm.mixin.gen.AccessorInfo;
 import org.spongepowered.asm.mixin.gen.AccessorInfo.AccessorName;
 import org.spongepowered.asm.mixin.gen.AccessorInfo.AccessorType;
+import org.spongepowered.asm.mixin.injection.Coerce;
 import org.spongepowered.asm.mixin.injection.selectors.ITargetSelectorRemappable;
 import org.spongepowered.asm.mixin.injection.struct.MemberInfo;
 import org.spongepowered.asm.mixin.refmap.IMixinContext;
@@ -60,8 +61,8 @@ class AnnotatedMixinElementHandlerAccessor extends AnnotatedMixinElementHandler 
     static class AnnotatedElementAccessor extends AnnotatedElementExecutable {
 
         protected final boolean shouldRemap;
-        
         protected final TypeMirror returnType;
+        protected final boolean coerce;
 
         protected String targetName;
 
@@ -69,6 +70,7 @@ class AnnotatedMixinElementHandlerAccessor extends AnnotatedMixinElementHandler 
             super(element, annotation, context, "value");
             this.shouldRemap = shouldRemap;
             this.returnType = this.getElement().getReturnType();
+            this.coerce = AnnotationHandle.of(element, Coerce.class).exists();
         }
 
         public void attach(TypeHandle target) {
@@ -94,10 +96,16 @@ class AnnotatedMixinElementHandlerAccessor extends AnnotatedMixinElementHandler 
         }
 
         public String getTargetTypeName() {
+            if (this.coerce) {
+                return "";
+            }
             return TypeUtils.getTypeName(this.getTargetType());
         }
 
         public String getTargetDesc() {
+            if (this.coerce) {
+                return "";
+            }
             return TypeUtils.getInternalName(this.getTargetType());
         }
 
@@ -187,6 +195,9 @@ class AnnotatedMixinElementHandlerAccessor extends AnnotatedMixinElementHandler 
 
         @Override
         public String getTargetDesc() {
+            if (this.coerce) {
+                return "";
+            }
             return this.getDesc();
         }
 
@@ -197,6 +208,9 @@ class AnnotatedMixinElementHandlerAccessor extends AnnotatedMixinElementHandler 
 
         @Override
         public String getTargetTypeName() {
+            if (this.coerce) {
+                return "";
+            }
             return TypeUtils.getJavaSignature(this.getElement());
         }
 
@@ -310,11 +324,13 @@ class AnnotatedMixinElementHandlerAccessor extends AnnotatedMixinElementHandler 
     }
 
     private void registerFactoryForTarget(AnnotatedElementInvoker elem, TypeHandle target) {
-        String returnType = TypeUtils.getTypeName(elem.getReturnType());
-        if (!returnType.equals(target.toString())) {
-            elem.printMessage(this.ap, MessageType.FACTORY_INVOKER_RETURN_TYPE, "Invalid Factory @Invoker return type, expected "
-                    + target + " but found " + returnType);
-            return;
+        if (!elem.coerce) {
+            String returnType = TypeUtils.getTypeName(elem.getReturnType());
+            if (!returnType.equals(target.toString())) {
+                elem.printMessage(this.ap, MessageType.FACTORY_INVOKER_RETURN_TYPE, "Invalid Factory @Invoker return type, expected "
+                        + target + " but found " + returnType);
+                return;
+            }
         }
         if (!elem.isStatic()) {
             elem.printMessage(this.ap, MessageType.FACTORY_INVOKER_NONSTATIC, "Factory @Invoker must be static");
