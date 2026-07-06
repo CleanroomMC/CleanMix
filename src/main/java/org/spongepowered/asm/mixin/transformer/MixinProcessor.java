@@ -544,12 +544,12 @@ public class MixinProcessor {
      * @param environment Environment to query
      */
     private void selectConfigs(MixinEnvironment environment) {
-        for (Iterator<Config> iter = Mixins.getConfigs().iterator(); iter.hasNext();) {
-            Config handle = iter.next();
+        Set<Config> configs = Mixins.getConfigs();
+        for (Config handle : new ArrayList<Config>(configs)) {
             try {
                 MixinConfig config = handle.get();
                 if (config.select(environment)) {
-                    iter.remove();
+                    configs.remove(handle);
                     MixinProcessor.logger.log(this.verboseLoggingLevel, "Selecting config {}", config);
                     config.onSelect();
                     this.pendingConfigs.add(config);
@@ -558,8 +558,12 @@ public class MixinProcessor {
                 MixinProcessor.logger.warn(String.format("Failed to select mixin config: %s", handle), ex);
             }
         }
-        
-        Collections.sort(this.pendingConfigs);
+
+        if (!configs.isEmpty()) {
+            this.selectConfigs(environment);
+        } else {
+            Collections.sort(this.pendingConfigs);
+        }
     }
 
     /**
