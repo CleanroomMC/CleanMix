@@ -44,6 +44,7 @@ import org.spongepowered.asm.mixin.extensibility.IMixinErrorHandler.ErrorAction;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 import org.spongepowered.asm.mixin.injection.InjectionPoint;
 import org.spongepowered.asm.mixin.injection.selectors.ITargetSelectorDynamic;
+import org.spongepowered.asm.mixin.transformer.ext.IExtension;
 import org.spongepowered.asm.mixin.throwables.ClassAlreadyLoadedException;
 import org.spongepowered.asm.mixin.throwables.MixinApplyError;
 import org.spongepowered.asm.mixin.throwables.MixinException;
@@ -217,6 +218,11 @@ public class MixinProcessor {
      * Number of classes transformed in the current phase
      */
     private int transformedCount = 0;
+
+    /**
+     * Guard against recursive config selection during preparation
+     */
+    private boolean selecting = false;
 
     /**
      * ctor 
@@ -492,51 +498,60 @@ public class MixinProcessor {
     }
 
     private void checkSelect(MixinEnvironment environment) {
+        if (this.selecting) {
+            return;
+        }
+
         if (this.currentEnvironment != environment) {
             this.select(environment);
             return;
         }
-        
+
         if (Mixins.getUnvisitedCount() > 0) {
             this.select(environment);
         }
     }
 
     private void select(MixinEnvironment environment) {
-        this.verboseLoggingLevel = (environment.getOption(Option.DEBUG_VERBOSE)) ? Level.INFO : Level.DEBUG;
-        if (this.transformedCount > 0) {
-            MixinProcessor.logger.log(this.verboseLoggingLevel, "Ending {}, applied {} mixins", this.currentEnvironment, this.transformedCount);
-        }
-        String action = this.currentEnvironment == environment ? "Checking for additional" : "Preparing";
-        MixinProcessor.logger.log(this.verboseLoggingLevel, "{} mixins for {}", action, environment);
-        
-        Profiler.setActive(true);
-        this.profiler.mark(environment.getPhase().toString() + ":prepare");
-        Section prepareTimer = this.profiler.begin("prepare");
-        
-        this.selectConfigs(environment);
-        this.extensions.select(environment);
-        int totalMixins = this.prepareConfigs(environment, this.extensions);
-        this.currentEnvironment = environment;
-        this.transformedCount = 0;
+        this.selecting = true;
+        try {
+            this.verboseLoggingLevel = (environment.getOption(Option.DEBUG_VERBOSE)) ? Level.INFO : Level.DEBUG;
+            if (this.transformedCount > 0) {
+                MixinProcessor.logger.log(this.verboseLoggingLevel, "Ending {}, applied {} mixins", this.currentEnvironment, this.transformedCount);
+            }
+            String action = this.currentEnvironment == environment ? "Checking for additional" : "Preparing";
+            MixinProcessor.logger.log(this.verboseLoggingLevel, "{} mixins for {}", action, environment);
 
-        prepareTimer.end();
-        
-        long elapsedMs = prepareTimer.getTime();
-        double elapsedTime = prepareTimer.getSeconds();
-        if (elapsedTime > 0.25D) {
-            long loadTime = this.profiler.get("class.load").getTime();
-            long transformTime = this.profiler.get("class.transform").getTime();
-            long pluginTime = this.profiler.get("mixin.plugin").getTime();
-            String elapsed = new DecimalFormat("###0.000").format(elapsedTime);
-            String perMixinTime = new DecimalFormat("###0.0").format(((double)elapsedMs) / totalMixins);
-            
-            MixinProcessor.logger.log(this.verboseLoggingLevel, "Prepared {} mixins in {} sec ({}ms avg) ({}ms load, {}ms transform, {}ms plugin)",
-                    totalMixins, elapsed, perMixinTime, loadTime, transformTime, pluginTime);
-        }
+            Profiler.setActive(true);
+            this.profiler.mark(environment.getPhase().toString() + ":prepare");
+            Section prepareTimer = this.profiler.begin("prepare");
 
-        this.profiler.mark(environment.getPhase().toString() + ":apply");
-        Profiler.setActive(environment.getOption(Option.DEBUG_PROFILER));
+            this.selectConfigs(environment);
+            this.extensions.select(environment);
+            int totalMixins = this.prepareConfigs(environment, this.extensions);
+            this.currentEnvironment = environment;
+            this.transformedCount = 0;
+
+            prepareTimer.end();
+
+            long elapsedMs = prepareTimer.getTime();
+            double elapsedTime = prepareTimer.getSeconds();
+            if (elapsedTime > 0.25D) {
+                long loadTime = this.profiler.get("class.load").getTime();
+                long transformTime = this.profiler.get("class.transform").getTime();
+                long pluginTime = this.profiler.get("mixin.plugin").getTime();
+                String elapsed = new DecimalFormat("###0.000").format(elapsedTime);
+                String perMixinTime = new DecimalFormat("###0.0").format(((double)elapsedMs) / totalMixins);
+
+                MixinProcessor.logger.log(this.verboseLoggingLevel, "Prepared {} mixins in {} sec ({}ms avg) ({}ms load, {}ms transform, {}ms plugin)",
+                        totalMixins, elapsed, perMixinTime, loadTime, transformTime, pluginTime);
+            }
+
+            this.profiler.mark(environment.getPhase().toString() + ":apply");
+            Profiler.setActive(environment.getOption(Option.DEBUG_PROFILER));
+        } finally {
+            this.selecting = false;
+        }
     }
 
     /**
