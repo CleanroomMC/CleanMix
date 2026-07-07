@@ -109,6 +109,10 @@ public class Srg2McpRemapper implements IRemapper {
     }
 
     private static Map<String, String> loadSrgs(String fileName) {
+        if (Strings.isNullOrEmpty(fileName)) {
+            return new HashMap<>();
+        }
+
         if (srgs.containsKey(fileName)) {
             return srgs.get(fileName);
         }

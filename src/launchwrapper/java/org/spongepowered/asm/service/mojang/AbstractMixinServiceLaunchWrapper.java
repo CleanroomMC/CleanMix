@@ -30,6 +30,7 @@ import org.spongepowered.asm.launch.platform.container.ContainerHandleURI;
 import org.spongepowered.asm.launch.platform.container.IContainerHandle;
 import org.spongepowered.asm.logging.ILogger;
 import org.spongepowered.asm.mixin.MixinEnvironment;
+import org.spongepowered.asm.obfuscation.mapping.mcp.Srg2McpRemapper;
 import org.spongepowered.asm.service.IAdviceProvider;
 import org.spongepowered.asm.service.IClassBytecodeProvider;
 import org.spongepowered.asm.service.IClassProvider;
@@ -106,6 +107,10 @@ public abstract class AbstractMixinServiceLaunchWrapper extends MixinServiceAbst
     @Override
     public void init() {
         GlobalProperties.<List<String>>get(Blackboard.TWEAK_CLASSES_KEY).add(STATE_TWEAKER);
+        if (isDevelopment()) {
+            MixinEnvironment environment = MixinEnvironment.getDefaultEnvironment();
+            environment.getRemappers().add(new Srg2McpRemapper(environment));
+        }
     }
 
     @Override
