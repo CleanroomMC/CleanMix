@@ -1367,8 +1367,8 @@ public final class ClassInfo {
         if (ClassInfo.JAVA_LANG_OBJECT.equals(internalName)) {
             return true;
         }
-        
-        return this.findSuperClass(internalName, traversal) != null;
+
+        return this.findSuperClass(internalName, traversal, includeInterfaces) != null;
     }
 
     /**
@@ -1407,8 +1407,8 @@ public final class ClassInfo {
         if (ClassInfo.JAVA_LANG_OBJECT.equals(superClass)) {
             return true;
         }
-        
-        return this.findSuperClass(superClass, traversal) != null;
+
+        return this.findSuperClass(superClass, traversal, includeInterfaces) != null;
     }
 
     /**
