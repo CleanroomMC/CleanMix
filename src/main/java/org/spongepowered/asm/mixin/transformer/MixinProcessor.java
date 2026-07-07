@@ -331,7 +331,8 @@ public class MixinProcessor {
             if (packageOwnedByConfig != null) {
                 // AMS - Temp passthrough for injection points and dynamic selectors. Moving to service in 0.9
                 ClassInfo targetInfo = ClassInfo.fromClassNode(targetClassNode);
-                if (targetInfo.hasSuperClass(InjectionPoint.class) || targetInfo.hasSuperClass(ITargetSelectorDynamic.class)) {
+                if (targetInfo.hasSuperClass(InjectionPoint.class) || targetInfo.hasSuperClass(ITargetSelectorDynamic.class)
+                        || targetInfo.hasSuperClass(IExtension.class)) {
                     return transformed;
                 }
                 
