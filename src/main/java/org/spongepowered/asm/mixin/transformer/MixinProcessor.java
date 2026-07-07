@@ -545,25 +545,23 @@ public class MixinProcessor {
      */
     private void selectConfigs(MixinEnvironment environment) {
         Set<Config> configs = Mixins.getConfigs();
-        for (Config handle : new ArrayList<Config>(configs)) {
-            try {
-                MixinConfig config = handle.get();
-                if (config.select(environment)) {
-                    configs.remove(handle);
-                    MixinProcessor.logger.log(this.verboseLoggingLevel, "Selecting config {}", config);
-                    config.onSelect();
-                    this.pendingConfigs.add(config);
+        while (!Mixins.getConfigs().isEmpty()) {
+            List<Config> copy = new ArrayList<Config>(configs);
+            for (Config handle : copy) {
+                try {
+                    MixinConfig config = handle.get();
+                    if (config.select(environment)) {
+                        configs.remove(handle);
+                        MixinProcessor.logger.log(this.verboseLoggingLevel, "Selecting config {}", config);
+                        config.onSelect();
+                        this.pendingConfigs.add(config);
+                    }
+                } catch (Exception ex) {
+                    MixinProcessor.logger.warn(String.format("Failed to select mixin config: %s", handle), ex);
                 }
-            } catch (Exception ex) {
-                MixinProcessor.logger.warn(String.format("Failed to select mixin config: %s", handle), ex);
             }
         }
-
-        if (!configs.isEmpty()) {
-            this.selectConfigs(environment);
-        } else {
-            Collections.sort(this.pendingConfigs);
-        }
+        Collections.sort(this.pendingConfigs);
     }
 
     /**
