@@ -74,6 +74,11 @@ public abstract class AbstractMixinServiceLaunchWrapper extends MixinServiceAbst
     }
 
     @Override
+    public void prepare() {
+        Launch.classLoader.addClassLoaderExclusion(LAUNCH_PACKAGE);
+    }
+
+    @Override
     public MixinEnvironment.Phase getInitialPhase() {
         if (isDevelopment()) {
             System.setProperty("mixin.env.remapRefMap", "true");
