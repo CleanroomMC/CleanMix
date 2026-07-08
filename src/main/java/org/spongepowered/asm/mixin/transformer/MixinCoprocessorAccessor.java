@@ -42,6 +42,7 @@ import org.spongepowered.asm.mixin.transformer.MixinInfo.MixinClassNode;
 import org.spongepowered.asm.mixin.transformer.MixinInfo.MixinMethodNode;
 import org.spongepowered.asm.mixin.transformer.meta.MixinProxy;
 import org.spongepowered.asm.mixin.transformer.throwables.MixinTransformerError;
+import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.util.Annotations;
 import org.spongepowered.asm.util.Bytecode;
 import org.spongepowered.asm.util.LanguageFeatures;
@@ -93,6 +94,10 @@ class MixinCoprocessorAccessor extends MixinCoprocessor {
         }
         
         MixinInfo mixin = this.accessorMixins.get(className);
+        if (mixin.getTargets().isEmpty()) {
+            MixinService.getService().getLogger("CleanMix").debug("{} doesn't have any resolved targets?",  className);
+            return ProcessResult.NONE;
+        }
         boolean transformed = false;
         MixinClassNode mixinClassNode = mixin.getClassNode(0);
         ClassInfo targetClass = mixin.getTargets().get(0);
