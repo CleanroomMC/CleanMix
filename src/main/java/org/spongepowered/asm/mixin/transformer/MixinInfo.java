@@ -856,7 +856,12 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
      * Strict target checks enabled
      */
     private final transient boolean strict;
-    
+
+    /**
+     * Should the assigned plugin be queried for this mixin's application?
+     */
+    private final boolean ignorePlugin;
+
     /**
      * Transformer extensions manager 
      */
@@ -878,8 +883,7 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
      * @param parent configuration which owns this mixin, the parent
      * @param name name of this mixin (class name stub)
      * @param plugin mixin config companion plugin handle
-     * @param ignorePlugin true to prevent the plugin from filtering targets of
-     *      this mixin
+     * @param ignorePlugin true to prevent the plugin from filtering targets of this mixin
      */
     MixinInfo(IMixinService service, MixinConfig parent, String name, PluginHandle plugin, boolean ignorePlugin, Extensions extensions) {
         this.service = service;
@@ -889,6 +893,7 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
         this.plugin = plugin;
         this.phase = parent.getEnvironment().getPhase();
         this.strict = parent.getEnvironment().getOption(Option.DEBUG_TARGETS);
+        this.ignorePlugin = ignorePlugin;
         this.extensions = extensions;
         
         // Read the class bytes and transform
@@ -1035,13 +1040,24 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
     /**
      * Check whether this mixin should apply to the specified taret
      *
-     * @param ignorePlugin true to ignore the config plugin
+     * @param ignorePlugin CLEANROOM: unused bool, ignorePlugin is now handled via {@link #ignorePlugin}
      * @param targetName target class name
      * @return true if the mixin should be a pplied
      */
+    @Deprecated
     public boolean shouldApplyMixin(boolean ignorePlugin, String targetName) {
+        return this.shouldApplyMixin(targetName);
+    }
+
+    /**
+     * Check whether this mixin should apply to the specified taret
+
+     * @param targetName target class name
+     * @return true if the mixin should be a pplied
+     */
+    public boolean shouldApplyMixin(String targetName) {
         Section pluginTimer = this.profiler.begin("plugin");
-        boolean result = ignorePlugin || this.plugin.shouldApplyMixin(targetName, this.className);
+        boolean result = this.ignorePlugin || this.plugin.shouldApplyMixin(targetName, this.className);
         pluginTimer.end();
         return result;
     }

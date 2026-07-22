@@ -285,7 +285,7 @@ public class MixinProcessor {
                 if (config.hasMixinsFor(name)) {
                     // Get and sort mixins for the class
                     for (MixinInfo mixin : config.getMixinsFor(name)) {
-                        if (mixin.shouldApplyMixin(false, name)) {
+                        if (mixin.shouldApplyMixin(name)) {
                             mixin.validate();
                             mixins.add(mixin);
                         }
