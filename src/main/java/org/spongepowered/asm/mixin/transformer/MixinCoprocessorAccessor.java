@@ -25,7 +25,9 @@
 package org.spongepowered.asm.mixin.transformer;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -94,13 +96,13 @@ class MixinCoprocessorAccessor extends MixinCoprocessor {
         }
         
         MixinInfo mixin = this.accessorMixins.get(className);
-        if (mixin.getTargets().isEmpty()) {
-            MixinService.getService().getLogger("CleanMix").debug("{} doesn't have any resolved targets?",  className);
+        ClassInfo targetClass = this.getTargetClass(mixin);
+        if (targetClass == null) {
+            MixinService.getService().getLogger("CleanMix").debug("{} doesn't have any applicable resolved targets", className);
             return ProcessResult.NONE;
         }
         boolean transformed = false;
         MixinClassNode mixinClassNode = mixin.getClassNode(0);
-        ClassInfo targetClass = mixin.getTargets().get(0);
         
         if (!Bytecode.hasFlag(mixinClassNode, Opcodes.ACC_PUBLIC)) {
             Bytecode.setVisibility(mixinClassNode, Visibility.PUBLIC);
@@ -116,7 +118,7 @@ class MixinCoprocessorAccessor extends MixinCoprocessor {
             AnnotationNode invoker = methodNode.getVisibleAnnotation(Invoker.class);
             if (accessor != null || invoker != null) {
                 Method method = this.getAccessorMethod(mixin, methodNode, targetClass);
-                MixinCoprocessorAccessor.createProxy(methodNode, targetClass, method);
+                createProxy(methodNode, targetClass, method);
                 Annotations.setVisible(methodNode, MixinProxy.class, "sessionId", this.sessionId);
                 classNode.methods.add(methodNode);
                 transformed = true;
@@ -134,6 +136,39 @@ class MixinCoprocessorAccessor extends MixinCoprocessor {
     @Override
     public boolean couldTransform(String className) {
         return MixinEnvironment.getCompatibilityLevel().supports(LanguageFeatures.METHODS_IN_INTERFACES) && this.accessorMixins.containsKey(className);
+    }
+
+    /**
+     * Get the target class used by static accessor proxies.
+     * As accessor mixins can be class-loaded before their target is transformed, force their lazy validation here.
+     */
+    private ClassInfo getTargetClass(MixinInfo mixin) {
+        // Fast-path for mixins already validated by normal target processing
+        if (!mixin.getTargets().isEmpty()) {
+            return mixin.getTargets().get(0);
+        }
+
+        Set<String> applicableTargets = new HashSet<String>();
+        for (String targetClassName : mixin.getTargetClasses()) {
+            targetClassName = targetClassName.replace('/', '.');
+            if (mixin.shouldApplyMixin(targetClassName)) {
+                applicableTargets.add(targetClassName);
+            }
+        }
+
+        if (applicableTargets.isEmpty()) {
+            return null;
+        }
+
+        mixin.validate();
+
+        for (ClassInfo targetClass : mixin.getTargets()) {
+            if (applicableTargets.contains(targetClass.getClassName())) {
+                return targetClass;
+            }
+        }
+
+        return null;
     }
 
     private Method getAccessorMethod(MixinInfo mixin, MethodNode methodNode, ClassInfo targetClass) throws MixinTransformerError {
