@@ -426,11 +426,6 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
     private transient boolean prepared = false;
     
     /**
-     * Track whether this mixin has been evaluated for selection yet 
-     */
-    private transient boolean visited = false;
-    
-    /**
      * Compatibility level read from the config (or default if none specified)
      */
     private transient CompatibilityLevel compatibilityLevel = CompatibilityLevel.DEFAULT;
@@ -1126,24 +1121,19 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
         return Math.min(Math.max(this.injectorOptions.maxShiftBy, 0), InjectionPoint.MAX_ALLOWED_SHIFT_BY);
     }
 
-    // AMS - temp
-
     /**
-     * CLEANROOM: Note, as of 0.2.0, phases are being removed.
-     * A config is selected as soon as it is seen by a select pass regardless of the environment.
-     * The environment that is bounded per-configuration is retained for lookups and backwards compatibility
-     * but never considered when being selected.
+     * @deprecated CLEANROOM: retained for reflective compatibility with mods. No longer used internally.
      */
+    @Deprecated
     public boolean select(MixinEnvironment environment) {
-        this.visited = true;
         return true;
     }
-    
-    // AMS - temp
+
+    @Deprecated
     boolean isVisited() {
-        return this.visited;
+        return true;
     }
-    
+
     /**
      * Get the number of mixins in this config, for debug logging
      * 

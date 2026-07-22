@@ -158,11 +158,6 @@ public class MixinProcessor {
     private final List<MixinConfig> configs = new ArrayList<MixinConfig>();
     
     /**
-     * Uninitialised mixin configuration bundles 
-     */
-    private final List<MixinConfig> pendingConfigs = new ArrayList<MixinConfig>();
-    
-    /**
      * Re-entrance detector
      */
     private final ReEntranceLock lock;
@@ -200,12 +195,7 @@ public class MixinProcessor {
     private final IMixinAuditTrail auditTrail;
 
     /**
-     * Current environment 
-     */
-    private MixinEnvironment currentEnvironment;
-
-    /**
-     * Logging level for verbose messages 
+     * Logging level for verbose messages
      */
     private Level verboseLoggingLevel = Level.DEBUG;
 
@@ -213,16 +203,11 @@ public class MixinProcessor {
      * Handling an error state, do not process further mixins
      */
     private boolean errorState = false;
-    
-    /**
-     * Number of classes transformed in the current phase
-     */
-    private int transformedCount = 0;
 
     /**
-     * Guard against recursive config selection during preparation
+     * Guard against recursive config preparation
      */
-    private boolean selecting = false;
+    private boolean preparing = false;
 
     /**
      * ctor 
@@ -286,7 +271,7 @@ public class MixinProcessor {
         boolean locked;
         
         try {
-            locked = lockAndSelect(environment, name);
+            locked = lockAndPrepare(environment, name);
         } catch (Throwable th) {
             mixinTimer.end();
             throw th;
@@ -371,7 +356,6 @@ public class MixinProcessor {
                         this.handleMixinApplyError(context.getClassName(), suppressed, environment);
                     }
 
-                    this.transformedCount++;
                     transformed = true;
                 } catch (InvalidMixinException th) {
                     this.dumpClassOnFailure(name, targetClassNode, environment);
@@ -405,7 +389,7 @@ public class MixinProcessor {
             return false;
         }
         
-        lockAndSelect(environment, name);
+        lockAndPrepare(environment, name);
 
         try {
             if (this.coprocessors.processingCouldTransform(name)) {
@@ -432,26 +416,18 @@ public class MixinProcessor {
         }
     }
     
-    private boolean lockAndSelect(MixinEnvironment environment, String name) {
+    private boolean lockAndPrepare(MixinEnvironment environment, String name) {
         boolean locked = this.lock.push().check();
 
-        if (locked) {
-            for (MixinConfig config : this.pendingConfigs) {
-                if (config.hasPendingMixinsFor(name)) {
-                    ReEntrantTransformerError error = new ReEntrantTransformerError("Re-entrance error.");
-                    MixinProcessor.logger.warn("Re-entrance detected during prepare phase, this will cause serious problems.", error);
-                    throw error;
-                }
-            }
-        } else {
+        if (!locked) {
             try {
-                this.checkSelect(environment);
+                this.prepareNewConfigs(environment);
             } catch (Exception ex) {
                 this.lock.pop();
                 throw new MixinException(ex);
             }
         }
-        
+
         return locked;
     }
 
@@ -492,45 +468,38 @@ public class MixinProcessor {
     }
 
     public void refresh() {
-        this.select(MixinEnvironment.getCurrentEnvironment());
+        this.prepareNewConfigs(MixinEnvironment.getCurrentEnvironment());
 
         this.service.offer(new MixinInternalNote("Refresh"));
     }
 
-    private void checkSelect(MixinEnvironment environment) {
-        if (this.selecting) {
+    /**
+     * Consume all pending configs from {@link Mixins#getConfigs()}.
+     * Prepare them, and promote them into {@link #configs}.
+     * Loops until no new configs appear.
+     */
+    private void prepareNewConfigs(MixinEnvironment environment) {
+        if (this.preparing) {
+            return;
+        }
+        if (Mixins.getUnvisitedCount() == 0) {
             return;
         }
 
-        if (this.currentEnvironment != environment) {
-            this.select(environment);
-            return;
-        }
-
-        if (Mixins.getUnvisitedCount() > 0) {
-            this.select(environment);
-        }
-    }
-
-    private void select(MixinEnvironment environment) {
-        this.selecting = true;
+        this.preparing = true;
         try {
-            this.verboseLoggingLevel = (environment.getOption(Option.DEBUG_VERBOSE)) ? Level.INFO : Level.DEBUG;
-            if (this.transformedCount > 0) {
-                MixinProcessor.logger.log(this.verboseLoggingLevel, "Ending {}, applied {} mixins", this.currentEnvironment, this.transformedCount);
-            }
-            String action = this.currentEnvironment == environment ? "Checking for additional" : "Preparing";
-            MixinProcessor.logger.log(this.verboseLoggingLevel, "{} mixins for {}", action, environment);
+            this.verboseLoggingLevel = environment.getOption(Option.DEBUG_VERBOSE) ? Level.INFO : Level.DEBUG;
 
             Profiler.setActive(true);
-            this.profiler.mark(environment.getPhase().toString() + ":prepare");
             Section prepareTimer = this.profiler.begin("prepare");
 
-            this.selectConfigs(environment);
             this.extensions.select(environment);
-            int totalMixins = this.prepareConfigs(environment, this.extensions);
-            this.currentEnvironment = environment;
-            this.transformedCount = 0;
+
+            int totalMixins = 0;
+            while (Mixins.getUnvisitedCount() > 0) {
+                List<MixinConfig> batch = this.consumeConfigs();
+                totalMixins += this.prepareBatch(batch, environment);
+            }
 
             prepareTimer.end();
 
@@ -547,50 +516,42 @@ public class MixinProcessor {
                         totalMixins, elapsed, perMixinTime, loadTime, transformTime, pluginTime);
             }
 
-            this.profiler.mark(environment.getPhase().toString() + ":apply");
             Profiler.setActive(environment.getOption(Option.DEBUG_PROFILER));
         } finally {
-            this.selecting = false;
+            this.preparing = false;
         }
     }
 
     /**
-     * Add configurations from the supplied mixin environment to the configs set
-     * 
-     * @param environment Environment to query
+     * Drain the global pending config set, initialize each config, and return the batch for preparation.
      */
-    private void selectConfigs(MixinEnvironment environment) {
-        Set<Config> configs = Mixins.getConfigs();
-        while (!Mixins.getConfigs().isEmpty()) {
-            List<Config> copy = new ArrayList<Config>(configs);
-            for (Config handle : copy) {
-                try {
-                    MixinConfig config = handle.get();
-                    if (config.select(environment)) {
-                        configs.remove(handle);
-                        MixinProcessor.logger.log(this.verboseLoggingLevel, "Selecting config {}", config);
-                        config.onSelect();
-                        this.pendingConfigs.add(config);
-                    }
-                } catch (Exception ex) {
-                    MixinProcessor.logger.warn(String.format("Failed to select mixin config: %s", handle), ex);
-                }
+    private List<MixinConfig> consumeConfigs() {
+        List<MixinConfig> batch = new ArrayList<MixinConfig>();
+        Set<Config> globalConfigs = Mixins.getConfigs();
+        for (Config handle : new ArrayList<Config>(globalConfigs)) {
+            try {
+                MixinConfig config = handle.get();
+                globalConfigs.remove(handle);
+                MixinProcessor.logger.log(this.verboseLoggingLevel, "Preparing config {}", config);
+                config.onSelect();
+                batch.add(config);
+            } catch (Exception ex) {
+                MixinProcessor.logger.warn(String.format("Failed to prepare mixin config: %s", handle), ex);
             }
         }
-        Collections.sort(this.pendingConfigs);
+        Collections.sort(batch);
+        return batch;
     }
 
     /**
-     * Prepare mixin configs
-     * 
-     * @param environment Environment
-     * @return total number of mixins initialised
+     * Run the full preparation pipeline on a batch of configs, then promote
+     * them into the active config list.
      */
-    private int prepareConfigs(MixinEnvironment environment, Extensions extensions) {
+    private int prepareBatch(List<MixinConfig> batch, MixinEnvironment environment) {
         int totalMixins = 0;
-        
+
         final IHotSwap hotSwapper = this.hotSwapper;
-        for (MixinConfig config : this.pendingConfigs) {
+        for (MixinConfig config : batch) {
             for (MixinCoprocessor coprocessor : this.coprocessors) {
                 config.addListener(coprocessor);
             }
@@ -607,11 +568,11 @@ public class MixinProcessor {
                 });
             }
         }
-        
-        for (MixinConfig config : this.pendingConfigs) {
+
+        for (MixinConfig config : batch) {
             try {
                 MixinProcessor.logger.log(this.verboseLoggingLevel, "Preparing {} ({})", config, config.getDeclaredMixinCount());
-                config.prepare(extensions);
+                config.prepare(this.extensions);
                 totalMixins += config.getMixinCount();
             } catch (InvalidMixinException ex) {
                 this.handleMixinPrepareError(config, ex, environment);
@@ -620,24 +581,27 @@ public class MixinProcessor {
                 MixinProcessor.logger.error("Error encountered whilst initialising mixin config '" + config.getName() + "' from mod '" + FabricUtil.getModId(config) + "': " + message, ex);
             }
         }
-        
-        for (MixinConfig config : this.pendingConfigs) {
+
+        for (MixinConfig config : batch) {
             IMixinConfigPlugin plugin = config.getPlugin();
             if (plugin == null) {
                 continue;
             }
-            
+
             Set<String> otherTargets = new HashSet<String>();
-            for (MixinConfig otherConfig : this.pendingConfigs) {
+            for (MixinConfig otherConfig : this.configs) {
+                otherTargets.addAll(otherConfig.getTargets());
+            }
+            for (MixinConfig otherConfig : batch) {
                 if (!otherConfig.equals(config)) {
                     otherTargets.addAll(otherConfig.getTargets());
                 }
             }
-            
+
             plugin.acceptTargets(config.getTargetsSet(), Collections.<String>unmodifiableSet(otherTargets));
         }
 
-        for (MixinConfig config : this.pendingConfigs) {
+        for (MixinConfig config : batch) {
             try {
                 config.postInitialise(this.extensions);
             } catch (InvalidMixinException ex) {
@@ -647,11 +611,10 @@ public class MixinProcessor {
                 MixinProcessor.logger.error("Error encountered during mixin config postInit step '" + config.getName() + "' from mod '" + FabricUtil.getModId(config) + "': " + message, ex);
             }
         }
-        
-        this.configs.addAll(this.pendingConfigs);
+
+        this.configs.addAll(batch);
         Collections.sort(this.configs);
-        this.pendingConfigs.clear();
-        
+
         return totalMixins;
     }
 

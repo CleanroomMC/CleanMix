@@ -87,9 +87,12 @@ public class Config {
 
     /**
      * Get whether config has been visited
+     *
+     * @deprecated a configuration will immediately be visited after preparation
      */
+    @Deprecated
     public boolean isVisited() {
-        return this.config.isVisited();
+        return true;
     }
 
     /**
