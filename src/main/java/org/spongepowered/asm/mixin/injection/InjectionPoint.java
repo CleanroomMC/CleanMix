@@ -45,7 +45,7 @@ import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.MethodNode;
-import org.spongepowered.asm.mixin.FabricUtil;
+import org.spongepowered.asm.mixin.CleanroomUtil;
 import org.spongepowered.asm.mixin.MixinEnvironment;
 import org.spongepowered.asm.mixin.MixinEnvironment.Option;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInjector;
@@ -556,17 +556,17 @@ public abstract class InjectionPoint {
         private final boolean respectSpecifier;
 
         public Shift(InjectionPoint input, int shift) {
-            this(input, shift, FabricUtil.COMPATIBILITY_LATEST);
+            this(input, shift, CleanroomUtil.COMPATIBILITY_LATEST);
         }
 
-        public Shift(InjectionPoint input, int shift, int fabricCompatibility) {
+        public Shift(InjectionPoint input, int shift, int compatibility) {
             if (input == null) {
                 throw new IllegalArgumentException("Must supply an input injection point for SHIFT");
             }
 
             this.input = input;
             this.shift = shift;
-            this.respectSpecifier = fabricCompatibility >= FabricUtil.COMPATIBILITY_0_16_5;
+            this.respectSpecifier = compatibility >= CleanroomUtil.COMPATIBILITY_0_1_0;
         }
 
         /* (non-Javadoc)
@@ -884,16 +884,16 @@ public abstract class InjectionPoint {
     private static InjectionPoint shift(IInjectionPointContext context, InjectionPoint point,
             At.Shift shift, int by) {
 
-        int fabricCompatibility = FabricUtil.getCompatibility(context);
+        int compatibility = CleanroomUtil.getCompatibility(context);
         
         if (point != null) {
             if (shift == At.Shift.BEFORE) {
-                return new InjectionPoint.Shift(point, -1, fabricCompatibility);
+                return new InjectionPoint.Shift(point, -1, compatibility);
             } else if (shift == At.Shift.AFTER) {
-                return new InjectionPoint.Shift(point, 1, fabricCompatibility);
+                return new InjectionPoint.Shift(point, 1, compatibility);
             } else if (shift == At.Shift.BY) {
                 InjectionPoint.validateByValue(context.getMixin(), context.getMethod(), context.getAnnotationNode(), point, by);
-                return new InjectionPoint.Shift(point, by, fabricCompatibility);
+                return new InjectionPoint.Shift(point, by, compatibility);
             }
         }
 

@@ -698,8 +698,9 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
 
             @Override
             void validate(State state, List<ClassInfo> targetClasses) {
-                if (FabricUtil.getCompatibility(this.mixin.getConfig()) < FabricUtil.COMPATIBILITY_0_17_1) {
-                    String advice = MixinService.getService().getAdviceProvider().higherCompatibilityNeeded(FabricUtil.COMPATIBILITY_0_17_1, "0.17.1");
+                if (CleanroomUtil.getCompatibility(this.mixin.getConfig()) < CleanroomUtil.COMPATIBILITY_0_6_0) {
+                    String advice = MixinService.getService().getAdviceProvider().higherCompatibilityNeeded(CleanroomUtil.COMPATIBILITY_0_6_0,
+                            "CleanMix 0.6.0");
                     throw new InvalidMixinException(this.mixin, "Enum extensions are not supported at the current compatibility version. " + advice);
                 }
                 EnumExtensionUtils.checkForGotchas(this.mixin, state.getValidationClassNode());
@@ -1458,7 +1459,7 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
      */
     @Override
     public String toString() {
-        return String.format("%s:%s from mod %s", this.parent.getName(), this.name, FabricUtil.getModId(getConfig()));
+        return String.format("%s:%s from mod %s", this.parent.getName(), this.name, CleanroomUtil.getModId(getConfig()));
     }
     
     static Variant getVariant(ClassNode classNode) {

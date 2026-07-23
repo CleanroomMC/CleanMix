@@ -32,7 +32,7 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.VarInsnNode;
-import org.spongepowered.asm.mixin.FabricUtil;
+import org.spongepowered.asm.mixin.CleanroomUtil;
 import org.spongepowered.asm.mixin.injection.InjectionPoint;
 import org.spongepowered.asm.mixin.injection.InjectionPoint.RestrictTargetLevel;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
@@ -172,7 +172,7 @@ public class ModifyVariableInjector extends Injector {
         return String.format(
                 "localcontext(%s,%s,#%s,%s)",
                 this.returnType, this.discriminator.isArgsOnly() ? "argsOnly" : "fullFrame", node.getId(),
-                FabricUtil.getCompatibility(this.info)
+                CleanroomUtil.getCompatibility(this.info)
         );
     }
     

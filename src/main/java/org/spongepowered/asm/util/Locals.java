@@ -46,6 +46,7 @@ import org.objectweb.asm.tree.analysis.Analyzer;
 import org.objectweb.asm.tree.analysis.AnalyzerException;
 import org.objectweb.asm.tree.analysis.BasicValue;
 import org.objectweb.asm.tree.analysis.Frame;
+import org.spongepowered.asm.mixin.CleanroomUtil;
 import org.spongepowered.asm.mixin.transformer.ClassInfo;
 import org.spongepowered.asm.mixin.transformer.ClassInfo.FrameData;
 import org.spongepowered.asm.mixin.transformer.ClassInfo.Method;
@@ -276,11 +277,11 @@ public final class Locals {
      *
      * @param method the method to construct locals for
      * @param classNode the class containing the method
-     * @param fabricCompatibility the compatibility level to use
+     * @param compatibility the compatibility level to use
      * @return an array of LocalVariableNodes representing the initial method frame
      */
-    public static LocalVariableNode[] getInitialMethodLocals(MethodNode method, ClassNode classNode, int fabricCompatibility) {
-        return getInitialMethodLocals(method, classNode, fabricCompatibility, false);
+    public static LocalVariableNode[] getInitialMethodLocals(MethodNode method, ClassNode classNode, int compatibility) {
+        return getInitialMethodLocals(method, classNode, compatibility, false);
     }
 
     /**
@@ -289,11 +290,11 @@ public final class Locals {
      *
      * @param method the method to construct locals for
      * @param classNode the class containing the method
-     * @param fabricCompatibility the compatibility level to use
+     * @param compatibility the compatibility level to use
      * @param fallbackToLvIndex whether the fallback names should use the LVT index of the variable (for backwards compatibility)
      * @return an array of LocalVariableNodes representing the initial method frame
      */
-    public static LocalVariableNode[] getInitialMethodLocals(MethodNode method, ClassNode classNode, int fabricCompatibility, boolean fallbackToLvIndex) {
+    public static LocalVariableNode[] getInitialMethodLocals(MethodNode method, ClassNode classNode, int compatibility, boolean fallbackToLvIndex) {
         boolean isStatic = Bytecode.isStatic(method);
         Type[] argTypes = Type.getArgumentTypes(method.desc);
         int initialFrameSize = Bytecode.getFirstNonArgLocalIndex(method);
@@ -302,9 +303,7 @@ public final class Locals {
         int local = 0;
 
         // Try to extract parameter names from LVT if compatibility level is high enough
-        String[] paramNames = fabricCompatibility >= org.spongepowered.asm.mixin.FabricUtil.COMPATIBILITY_0_17_0
-                ? getParameterNames(method, isStatic)
-                : new String[argTypes.length];
+        String[] paramNames = compatibility >= CleanroomUtil.COMPATIBILITY_0_1_0 ? getParameterNames(method, isStatic) : new String[argTypes.length];
 
         // Initialise implicit "this" reference in non-static methods
         if (!isStatic) {
@@ -435,13 +434,13 @@ public final class Locals {
      *      bear in mind that if the specified node is itself a STORE opcode,
      *      then we will be looking at the state of the locals PRIOR to its
      *      invocation
-     * @param fabricCompatibility Fabric compatibility level
+     * @param compatibility CleanMix compatibility level
      * @return A sparse array containing a view (hopefully) of the locals at the
      *      specified location
      */
-    public static LocalVariableNode[] getLocalsAt(ClassNode classNode, MethodNode method, AbstractInsnNode node, int fabricCompatibility) {
-        if (fabricCompatibility >= org.spongepowered.asm.mixin.FabricUtil.COMPATIBILITY_0_10_0) {
-            return Locals.getLocalsAt(classNode, method, node, Settings.DEFAULT, fabricCompatibility);
+    public static LocalVariableNode[] getLocalsAt(ClassNode classNode, MethodNode method, AbstractInsnNode node, int compatibility) {
+        if (compatibility >= CleanroomUtil.COMPATIBILITY_0_1_0) {
+            return Locals.getLocalsAt(classNode, method, node, Settings.DEFAULT, compatibility);
         } else {
             return getLocalsAt092(classNode, method, node);
         }
@@ -491,10 +490,10 @@ public final class Locals {
      *      specified location
      */
     public static LocalVariableNode[] getLocalsAt(ClassNode classNode, MethodNode method, AbstractInsnNode node, Settings settings) {
-        return getLocalsAt(classNode, method, node, settings, org.spongepowered.asm.mixin.FabricUtil.COMPATIBILITY_LATEST);
+        return getLocalsAt(classNode, method, node, settings, CleanroomUtil.COMPATIBILITY_LATEST);
     }
 
-    private static LocalVariableNode[] getLocalsAt(ClassNode classNode, MethodNode method, AbstractInsnNode node, Settings settings, int fabricCompatibility) {
+    private static LocalVariableNode[] getLocalsAt(ClassNode classNode, MethodNode method, AbstractInsnNode node, Settings settings, int compatibility) {
         for (int i = 0; i < 3 && (node instanceof LabelNode || node instanceof LineNumberNode); i++) {
             AbstractInsnNode nextNode = Locals.nextNode(method.instructions, node);
             if (nextNode instanceof FrameNode) { // Do not ffwd over frames
@@ -514,7 +513,7 @@ public final class Locals {
         List<FrameData> frames = methodInfo.getFrames();
 
         // Initialize the frame with "this" and method parameters
-        LocalVariableNode[] initialLocals = getInitialMethodLocals(method, classNode, fabricCompatibility);
+        LocalVariableNode[] initialLocals = getInitialMethodLocals(method, classNode, compatibility);
         LocalVariableNode[] frame = new LocalVariableNode[method.maxLocals];
         System.arraycopy(initialLocals, 0, frame, 0, initialLocals.length);
 

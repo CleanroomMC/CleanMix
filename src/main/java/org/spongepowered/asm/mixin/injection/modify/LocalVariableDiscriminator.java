@@ -35,7 +35,7 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.LocalVariableNode;
-import org.spongepowered.asm.mixin.FabricUtil;
+import org.spongepowered.asm.mixin.CleanroomUtil;
 import org.spongepowered.asm.mixin.injection.modify.LocalVariableDiscriminator.Context.Local;
 import org.spongepowered.asm.mixin.injection.struct.InjectionInfo;
 import org.spongepowered.asm.mixin.injection.struct.Target;
@@ -152,18 +152,18 @@ public class LocalVariableDiscriminator {
 
         private Local[] initLocals(Target target, boolean argsOnly, AbstractInsnNode node) {
             if (!argsOnly) {
-                LocalVariableNode[] locals = Locals.getLocalsAt(target.classNode, target.method, node, FabricUtil.getCompatibility(info));
+                LocalVariableNode[] locals = Locals.getLocalsAt(target.classNode, target.method, node, CleanroomUtil.getCompatibility(info));
                 if (locals != null) {
                     return getLocals(locals);
                 }
             }
 
-            int fabricCompatibility = FabricUtil.getCompatibility(info);
-            // Before 0.17.0, the names of arg variables were inconsistent. With argsOnly = true, they were "arg" + lvIndex
+            int compatibility = CleanroomUtil.getCompatibility(info);
+            // Before the CleanMix baseline, the names of arg variables were inconsistent. With argsOnly = true, they were "arg" + lvIndex
             // whereas for argsOnly = false, they were "arg" + paramIndex. We pick the latter always now which is the slightly
             // saner option, but we need to pick the former here when backwards compat is needed.
-            boolean fallbackToLvIndex = fabricCompatibility < FabricUtil.COMPATIBILITY_0_17_0;
-            LocalVariableNode[] initialLocals = Locals.getInitialMethodLocals(target.method, target.classNode, fabricCompatibility, fallbackToLvIndex);
+            boolean fallbackToLvIndex = compatibility < CleanroomUtil.COMPATIBILITY_0_1_0;
+            LocalVariableNode[] initialLocals = Locals.getInitialMethodLocals(target.method, target.classNode, compatibility, fallbackToLvIndex);
 
             return getLocals(initialLocals);
         }

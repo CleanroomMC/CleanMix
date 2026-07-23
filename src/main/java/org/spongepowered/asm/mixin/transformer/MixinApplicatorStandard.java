@@ -109,12 +109,12 @@ class MixinApplicatorStandard {
         INJECT_PREPARE,
 
         /**
-         * Apply instance field initialisers and {@code <clinit>} methods in legacy mixins (compat level < 0.17.1)
+         * Apply instance field initialisers and {@code <clinit>} methods in legacy mixins (CleanMix compat level <= 0.6.0)
          */
         INITIALISER_APPLY_LEGACY,
 
         /**
-         * Enumerate injectors and scan for injection points in legacy mixins (compat level < 0.17.1)
+         * Enumerate injectors and scan for injection points in legacy mixins (CleanMix compat level <= 0.6.0)
          */
         INJECT_PREPARE_LEGACY,
 
@@ -298,7 +298,7 @@ class MixinApplicatorStandard {
 
             case INJECT_PREPARE:
                 this.processMixins(mixinContexts, (activity, mixin) -> {
-                    if (FabricUtil.getCompatibility(mixin) >= FabricUtil.COMPATIBILITY_0_17_1) {
+                    if (CleanroomUtil.getCompatibility(mixin) >= CleanroomUtil.COMPATIBILITY_0_6_0) {
                         activity.next("Prepare Injections");
                         this.prepareInjections(mixin);
                     }
@@ -307,7 +307,7 @@ class MixinApplicatorStandard {
 
             case INITIALISER_APPLY_LEGACY:
                 this.processMixins(mixinContexts, (activity, mixin) -> {
-                    if (FabricUtil.getCompatibility(mixin) < FabricUtil.COMPATIBILITY_0_17_1) {
+                    if (CleanroomUtil.getCompatibility(mixin) < CleanroomUtil.COMPATIBILITY_0_6_0) {
                         activity.next("Apply Legacy Initialisers");
                         this.applyInitialisers(mixin);
                         activity.next("Apply Legacy CLINIT");
@@ -318,7 +318,7 @@ class MixinApplicatorStandard {
 
             case INJECT_PREPARE_LEGACY:
                 this.processMixins(mixinContexts, (activity, mixin) -> {
-                    if (FabricUtil.getCompatibility(mixin) < FabricUtil.COMPATIBILITY_0_17_1) {
+                    if (CleanroomUtil.getCompatibility(mixin) < CleanroomUtil.COMPATIBILITY_0_6_0) {
                         activity.next("Prepare Legacy Injections");
                         this.prepareInjections(mixin);
                     }
@@ -329,7 +329,7 @@ class MixinApplicatorStandard {
                 // ::get here for older guava versions
                 Supplier<Clinit> targetClinit = Suppliers.memoize(this::prepareOrCreateClinit)::get;
                 this.processMixins(mixinContexts, (activity, mixin) -> {
-                    if (FabricUtil.getCompatibility(mixin) >= FabricUtil.COMPATIBILITY_0_17_1) {
+                    if (CleanroomUtil.getCompatibility(mixin) >= CleanroomUtil.COMPATIBILITY_0_6_0) {
                         activity.next("Apply Initialisers");
                         this.applyInitialisers(mixin);
                         activity.next("Apply CLINIT");

@@ -32,7 +32,7 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.VarInsnNode;
-import org.spongepowered.asm.mixin.FabricUtil;
+import org.spongepowered.asm.mixin.CleanroomUtil;
 import org.spongepowered.asm.mixin.injection.InjectionPoint.AtCode;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.modify.LocalVariableDiscriminator.Context;
@@ -204,7 +204,8 @@ public class BeforeLoadLocal extends LocalVariableInjectionPoint {
     boolean find(InjectionInfo info, InsnList insns, Collection<AbstractInsnNode> nodes, Target target) {
         SearchState state = new SearchState();
 
-        ListIterator<AbstractInsnNode> iter = (FabricUtil.getCompatibility(info) >= FabricUtil.COMPATIBILITY_0_10_0 ? insns : target.method.instructions).iterator();
+        ListIterator<AbstractInsnNode> iter = (CleanroomUtil.getCompatibility(info) >= CleanroomUtil.COMPATIBILITY_0_1_0
+                ? insns : target.method.instructions).iterator();
         while (iter.hasNext()) {
             AbstractInsnNode insn = iter.next();
             if (state.isPendingCheck()) {
