@@ -698,7 +698,7 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
 
             @Override
             void validate(State state, List<ClassInfo> targetClasses) {
-                if (CleanroomUtil.getCompatibility(this.mixin.getConfig()) < CleanroomUtil.COMPATIBILITY_0_6_0) {
+                if (CleanroomUtil.getCompatibility(this.mixin) < CleanroomUtil.COMPATIBILITY_0_6_0) {
                     String advice = MixinService.getService().getAdviceProvider().higherCompatibilityNeeded(CleanroomUtil.COMPATIBILITY_0_6_0,
                             "CleanMix 0.6.0");
                     throw new InvalidMixinException(this.mixin, "Enum extensions are not supported at the current compatibility version. " + advice);

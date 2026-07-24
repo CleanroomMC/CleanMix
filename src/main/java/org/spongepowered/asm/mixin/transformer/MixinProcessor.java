@@ -705,18 +705,23 @@ public class MixinProcessor {
     // Retarded (or outdated) mods section:
 
     @Deprecated
-    private void checkSelect(MixinEnvironment environment) { }
+    private void checkSelect(MixinEnvironment environment) {
+    }
 
     @Deprecated
-    private void select(MixinEnvironment environment) { }
+    private void select(MixinEnvironment environment) {
+    }
 
     @Deprecated
-    private void selectConfigs(MixinEnvironment environment) { }
+    private void selectConfigs(MixinEnvironment environment) {
+    }
 
     @Deprecated
-    private void prepareConfigs(MixinEnvironment environment) { }
+    private void prepareConfigs(MixinEnvironment environment) {
+    }
 
     @Deprecated
-    private void prepareConfigs(MixinEnvironment environment, Extensions extensions) { }
+    private void prepareConfigs(MixinEnvironment environment, Extensions extensions) {
+    }
 
 }

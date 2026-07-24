@@ -109,12 +109,12 @@ class MixinApplicatorStandard {
         INJECT_PREPARE,
 
         /**
-         * Apply instance field initialisers and {@code <clinit>} methods in legacy mixins (CleanMix compat level <= 0.6.0)
+         * Apply instance field initialisers and {@code <clinit>} methods needed by legacy mixins and members
          */
         INITIALISER_APPLY_LEGACY,
 
         /**
-         * Enumerate injectors and scan for injection points in legacy mixins (CleanMix compat level <= 0.6.0)
+         * Enumerate legacy injectors and scan for injection points
          */
         INJECT_PREPARE_LEGACY,
 
@@ -181,6 +181,12 @@ class MixinApplicatorStandard {
     protected final ActivityStack activities = new ActivityStack();
 
     /**
+     * Lazily-prepared target class initialiser shared by the early and normal
+     * initialiser passes
+     */
+    private final Supplier<Clinit> targetClinit;
+
+    /**
      * Flag to track whether signatures from applied mixins should be merged
      * into target classes. This is only true when the runtime decompiler is
      * active. If this is disabled, signatures on merged mixin methods are
@@ -193,6 +199,8 @@ class MixinApplicatorStandard {
         this.targetName = context.getClassName();
         this.targetClass = context.getClassNode();
         this.targetClassInfo = context.getClassInfo();
+        // ::get here for older guava versions
+        this.targetClinit = Suppliers.memoize(this::prepareOrCreateClinit)::get;
         
         ExtensionClassExporter exporter = context.getExtensions().<ExtensionClassExporter>getExtension(ExtensionClassExporter.class);
         this.mergeSignatures = exporter.isDecompilerActive()
@@ -298,42 +306,41 @@ class MixinApplicatorStandard {
 
             case INJECT_PREPARE:
                 this.processMixins(mixinContexts, (activity, mixin) -> {
-                    if (CleanroomUtil.getCompatibility(mixin) >= CleanroomUtil.COMPATIBILITY_0_6_0) {
-                        activity.next("Prepare Injections");
-                        this.prepareInjections(mixin);
-                    }
+                    activity.next("Prepare Injections");
+                    this.prepareInjections(mixin, false);
                 });
                 break;
 
             case INITIALISER_APPLY_LEGACY:
                 this.processMixins(mixinContexts, (activity, mixin) -> {
-                    if (CleanroomUtil.getCompatibility(mixin) < CleanroomUtil.COMPATIBILITY_0_6_0) {
+                    if (mixin.requiresLegacyInitialiserPass()) {
                         activity.next("Apply Legacy Initialisers");
                         this.applyInitialisers(mixin);
-                        activity.next("Apply Legacy CLINIT");
-                        this.applyClinitLegacy(mixin);
+                        if (CleanroomUtil.getCompatibility(mixin) < CleanroomUtil.COMPATIBILITY_0_6_0) {
+                            activity.next("Apply Legacy CLINIT");
+                            this.applyClinitLegacy(mixin);
+                        } else {
+                            activity.next("Apply Early CLINIT");
+                            this.applyClinit(mixin, this.targetClinit);
+                        }
                     }
                 });
                 break;
 
             case INJECT_PREPARE_LEGACY:
                 this.processMixins(mixinContexts, (activity, mixin) -> {
-                    if (CleanroomUtil.getCompatibility(mixin) < CleanroomUtil.COMPATIBILITY_0_6_0) {
-                        activity.next("Prepare Legacy Injections");
-                        this.prepareInjections(mixin);
-                    }
+                    activity.next("Prepare Legacy Injections");
+                    this.prepareInjections(mixin, true);
                 });
                 break;
 
             case INITIALISER_APPLY:
-                // ::get here for older guava versions
-                Supplier<Clinit> targetClinit = Suppliers.memoize(this::prepareOrCreateClinit)::get;
                 this.processMixins(mixinContexts, (activity, mixin) -> {
-                    if (CleanroomUtil.getCompatibility(mixin) >= CleanroomUtil.COMPATIBILITY_0_6_0) {
+                    if (!mixin.requiresLegacyInitialiserPass()) {
                         activity.next("Apply Initialisers");
                         this.applyInitialisers(mixin);
                         activity.next("Apply CLINIT");
-                        this.applyClinit(mixin, targetClinit);
+                        this.applyClinit(mixin, this.targetClinit);
                     }
                 });
                 break;
@@ -808,8 +815,8 @@ class MixinApplicatorStandard {
      * 
      * @param mixin Mixin being scanned
      */
-    protected void prepareInjections(MixinTargetContext mixin) {
-        mixin.prepareInjections();
+    protected void prepareInjections(MixinTargetContext mixin, boolean legacy) {
+        mixin.prepareInjections(legacy);
     }
     
     /**

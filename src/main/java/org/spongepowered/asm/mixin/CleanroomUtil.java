@@ -24,29 +24,47 @@
  */
 package org.spongepowered.asm.mixin;
 
+import java.io.FileNotFoundException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.net.JarURLConnection;
+import java.net.URI;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.objectweb.asm.tree.FieldNode;
+import org.objectweb.asm.tree.MethodNode;
+import org.spongepowered.asm.launch.platform.container.ContainerHandleURI;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfig;
+import org.spongepowered.asm.mixin.extensibility.IMixinConfigSource;
+import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 import org.spongepowered.asm.mixin.injection.selectors.ISelectorContext;
 import org.spongepowered.asm.mixin.refmap.IMixinContext;
-import org.spongepowered.asm.util.VersionNumber;
+import org.spongepowered.asm.service.IMixinService;
+import org.spongepowered.asm.service.MixinService;
+import org.spongepowered.asm.service.clean.ICleanMixinService;
+import org.spongepowered.asm.util.asm.MethodNodeEx;
+
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 public final class CleanroomUtil {
 
-    public enum Loader {
-
-        MIXIN_BOOTER,
-        CLEANROOM;
-
-    }
+    /** Annotation-processor output containing compatibility by mixin and member. */
+    public static final String COMPATIBILITY_RESOURCE = "cleanmix_version_compatibility.json";
 
     /**
      * Config decoration containing the owning mod id.
      */
     public static final String KEY_MOD_ID = "cleanmix-id";
 
-    /**
-     * Config decoration containing one of the compatibility constants below.
-     */
-    public static final String KEY_COMPATIBILITY = "cleanroom-compat";
 
     // CleanMix compatibility boundaries, (major * 1000 + minor) * 1000 + patch
 
@@ -56,55 +74,76 @@ public final class CleanroomUtil {
     /** CleanMix compatibility version 0.6.0. */
     public static final int COMPATIBILITY_0_6_0 = 6000;
 
-    /** Baseline used by MixinBooter 10.7, Cleanroom 0.5.17, and older versions. */
+    /** Fallback for mixins built without CleanMix compatibility metadata. */
     public static final int COMPATIBILITY_OLD = COMPATIBILITY_0_1_0;
 
     /** Latest CleanMix compatibility version. */
     public static final int COMPATIBILITY_LATEST = COMPATIBILITY_0_6_0;
 
-    /** Last MixinBooter version using old compatibility. */
-    public static final VersionNumber MIXIN_BOOTER_10_7 = VersionNumber.parse("10.7");
-
-    /** First MixinBooter version using latest compatibility. */
-    public static final VersionNumber MIXIN_BOOTER_11_0 = VersionNumber.parse("11.0");
-
-    /** Last Cleanroom version using old compatibility. */
-    public static final VersionNumber CLEANROOM_0_5_17 = VersionNumber.parse("0.5.17");
-
-    /** First Cleanroom version using latest compatibility. */
-    public static final VersionNumber CLEANROOM_0_6_0 = VersionNumber.parse("0.6.0");
+    private static final Map<String, Integer> EMPTY_COMPATIBILITIES = Collections.<String, Integer>emptyMap();
+    private static final Map<String, Map<String, Integer>> COMPATIBILITIES_CACHE = new HashMap<String, Map<String, Integer>>();
 
     /**
-     * Resolve the compatibility behaviour for the supplied host version.
-     * Unknown or malformed versions are treated as old.
+     * Convert a CleanMix semantic version to its integer compatibility value.
      *
-     * @param loader host which registered the mixin config
-     * @param version host version, normally the owning mod's minimum dependency
-     * @return old or latest compatibility
+     * @param version version in major.minor.patch form
+     * @return encoded compatibility version
      */
-    public static int getCompatibility(Loader loader, String version) {
-        if (loader == null) {
-            return COMPATIBILITY_OLD;
+    public static int parseCompatibility(String version) {
+        if (version == null || !version.matches("\\d+\\.\\d+\\.\\d+")) {
+            throw new IllegalArgumentException("Invalid CleanMix compatibility version '" + version + "', expected major.minor.patch");
         }
-        VersionNumber parsed = VersionNumber.parse(version);
-        VersionNumber firstLatest = loader == Loader.MIXIN_BOOTER ? MIXIN_BOOTER_11_0 : CLEANROOM_0_6_0;
-        return parsed.compareTo(firstLatest) >= 0 ? COMPATIBILITY_0_6_0 : COMPATIBILITY_0_1_0;
+
+        String[] parts = version.split("\\.");
+        int major = parseCompatibilityPart(version, parts[0]);
+        int minor = parseCompatibilityPart(version, parts[1]);
+        int patch = parseCompatibilityPart(version, parts[2]);
+        return (major * 1000 + minor) * 1000 + patch;
+    }
+
+    private static int parseCompatibilityPart(String version, String part) {
+        int value;
+        try {
+            value = Integer.parseInt(part);
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("Invalid CleanMix compatibility version '" + version + "'", ex);
+        }
+        if (value > 999) {
+            throw new IllegalArgumentException("Invalid CleanMix compatibility version '" + version + "', each part must be at most 999");
+        }
+        return value;
     }
 
     /**
-     * Decorate a config with its owning mod and compatibility level.
+     * Convert an encoded compatibility value to major.minor.patch form.
+     *
+     * @param compatibility encoded compatibility version
+     * @return semantic version string
+     */
+    public static String getVersionString(int compatibility) {
+        if (compatibility < 0) {
+            throw new IllegalArgumentException("Compatibility version cannot be negative");
+        }
+        return String.format("%d.%d.%d", compatibility / 1000000, compatibility / 1000 % 1000, compatibility % 1000);
+    }
+
+    public static String getMethodCompatibilityKey(String className, String name, String desc) {
+        return className + "::" + name + desc;
+    }
+
+    public static String getFieldCompatibilityKey(String className, String name, String desc) {
+        return className + "::" + name + ":" + desc;
+    }
+
+    /**
+     * Decorate a config with its owning mod.
      *
      * @param config mixin config to decorate
      * @param modId owning mod id
-     * @param loader host which registered the config
-     * @param version host version, normally the owning mod's minimum dependency
      */
-    public static void decorate(IMixinConfig config, String modId, Loader loader, String version) {
+    public static void decorate(IMixinConfig config, String modId) {
         if (!config.hasDecoration(KEY_MOD_ID) && modId != null) {
             config.decorate(KEY_MOD_ID, modId);
-        }
-        if (!config.hasDecoration(KEY_COMPATIBILITY)) {
-            config.decorate(KEY_COMPATIBILITY, getCompatibility(loader, version));
         }
     }
 
@@ -122,15 +161,147 @@ public final class CleanroomUtil {
     }
 
     public static int getCompatibility(ISelectorContext context) {
-        return getCompatibility(getConfig(context));
+        return getCompatibility(context.getMixin().getMixin(), context.getMethod());
     }
 
     public static int getCompatibility(IMixinContext context) {
-        return getCompatibility(context.getMixin().getConfig());
+        return getCompatibility(context.getMixin(), null);
     }
 
-    public static int getCompatibility(IMixinConfig config) {
-        return getDecoration(config, KEY_COMPATIBILITY, COMPATIBILITY_OLD);
+    public static int getCompatibility(IMixinContext context, MethodNode method) {
+        return getCompatibility(context.getMixin(), method);
+    }
+
+    public static int getCompatibility(IMixinContext context, FieldNode field) {
+        return getCompatibility(context.getMixin(), field);
+    }
+
+    public static int getCompatibility(IMixinInfo mixin) {
+        return getCompatibility(mixin, null);
+    }
+
+    private static int getCompatibility(IMixinInfo mixin, Object member) {
+        String className = mixin.getClassName();
+        Map<String, Integer> compatibilities = getCompatibilities(mixin);
+        Integer compatibility = null;
+        if (member instanceof MethodNode) {
+            MethodNode method = (MethodNode) member;
+            compatibility = compatibilities.get(getMethodCompatibilityKey(className, MethodNodeEx.getName(method), method.desc));
+        } else if (member instanceof FieldNode) {
+            FieldNode field = (FieldNode) member;
+            compatibility = compatibilities.get(getFieldCompatibilityKey(className, field.name, field.desc));
+        }
+        if (compatibility == null) {
+            compatibility = compatibilities.get(className);
+        }
+        return compatibility != null ? compatibility : COMPATIBILITY_OLD;
+    }
+
+    private static Map<String, Integer> getCompatibilities(IMixinInfo mixin) {
+        URL metadataResource = findCompatibilityResource(mixin.getConfig().getSource());
+        if (metadataResource == null) {
+            metadataResource = findCompatibilityResource(mixin.getClassName());
+        }
+        if (metadataResource == null) {
+            return EMPTY_COMPATIBILITIES;
+        }
+        String cacheKey = metadataResource.toExternalForm();
+        Map<String, Integer> cached = COMPATIBILITIES_CACHE.get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+        Map<String, Integer> loaded = loadCompatibilities(metadataResource);
+        COMPATIBILITIES_CACHE.put(cacheKey, loaded);
+        return loaded;
+    }
+
+    private static URL findCompatibilityResource(IMixinConfigSource source) {
+        if (!(source instanceof ContainerHandleURI)) {
+            return null;
+        }
+        try {
+            URI sourceUri = ((ContainerHandleURI) source).getURI();
+            if (sourceUri == null) {
+                return null;
+            }
+            if ("jar".equals(sourceUri.getScheme())) {
+                return new URL(sourceUri.toURL(), COMPATIBILITY_RESOURCE);
+            }
+            if ("file".equals(sourceUri.getScheme())) {
+                Path sourcePath = Paths.get(sourceUri);
+                if (Files.isDirectory(sourcePath)) {
+                    return sourcePath.resolve(COMPATIBILITY_RESOURCE).toUri().toURL();
+                }
+                return new URL("jar:" + sourceUri.toURL().toExternalForm() + "!/" + COMPATIBILITY_RESOURCE);
+            }
+        } catch (Exception ex) {
+        }
+        return null;
+    }
+
+    private static URL findCompatibilityResource(String className) {
+        String classResourceName = className.replace('.', '/') + ".class";
+        try {
+            IMixinService service = MixinService.getService();
+            URL classResource = service instanceof ICleanMixinService
+                    ? ((ICleanMixinService) service).getResource(classResourceName)
+                    : Thread.currentThread().getContextClassLoader().getResource(classResourceName);
+            if (classResource == null) {
+                return null;
+            }
+            if ("jar".equals(classResource.getProtocol())) {
+                URL jar = ((JarURLConnection) classResource.openConnection()).getJarFileURL();
+                return new URL("jar:" + jar.toExternalForm() + "!/" + COMPATIBILITY_RESOURCE);
+            }
+            if ("file".equals(classResource.getProtocol())) {
+                Path root = Paths.get(classResource.toURI());
+                for (String ignored : classResourceName.split("/")) {
+                    root = root.getParent();
+                }
+                Path metadata = root.resolve(COMPATIBILITY_RESOURCE);
+                return Files.isRegularFile(metadata) ? metadata.toUri().toURL() : null;
+            }
+            String external = classResource.toExternalForm();
+            int classPathPos = external.lastIndexOf(classResourceName);
+            return classPathPos >= 0 ? new URL(external.substring(0, classPathPos) + COMPATIBILITY_RESOURCE) : null;
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
+    private static Map<String, Integer> loadCompatibilities(URL resource) {
+        Reader reader = null;
+        try {
+            InputStream input = resource.openStream();
+            reader = new InputStreamReader(input, StandardCharsets.UTF_8);
+            Map<String, String> versions = new Gson().fromJson(reader, new TypeToken<Map<String, String>>() { }.getType());
+            if (versions == null || versions.isEmpty()) {
+                return EMPTY_COMPATIBILITIES;
+            }
+            Map<String, Integer> compatibilities = new HashMap<String, Integer>();
+            for (Map.Entry<String, String> entry : versions.entrySet()) {
+                try {
+                    compatibilities.put(entry.getKey(), parseCompatibility(entry.getValue()));
+                } catch (IllegalArgumentException ex) {
+                    MixinService.getService().getLogger("CleanMix").warn("Ignoring invalid compatibility '{}' for '{}' in {}",
+                            entry.getValue(), entry.getKey(), resource);
+                }
+            }
+            return compatibilities.isEmpty() ? EMPTY_COMPATIBILITIES : compatibilities;
+        } catch (FileNotFoundException ex) {
+            return EMPTY_COMPATIBILITIES;
+        } catch (Exception ex) {
+            MixinService.getService().getLogger("CleanMix").warn("Unable to read CleanMix compatibility metadata from {}", resource, ex);
+            return EMPTY_COMPATIBILITIES;
+        } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (Exception ex) {
+                    // Ignore close failure
+                }
+            }
+        }
     }
 
     private static IMixinConfig getConfig(ISelectorContext context) {

@@ -119,13 +119,13 @@ class MixinApplicatorInterface extends MixinApplicatorStandard {
     /* (non-Javadoc)
      * @see org.spongepowered.asm.mixin.transformer.MixinApplicator
      *      #prepareInjections(
-     *      org.spongepowered.asm.mixin.transformer.MixinTargetContext)
+     *      org.spongepowered.asm.mixin.transformer.MixinTargetContext, boolean)
      */
     @Override
-    protected void prepareInjections(MixinTargetContext mixin) {
+    protected void prepareInjections(MixinTargetContext mixin, boolean legacy) {
         if (Feature.INJECTORS_IN_INTERFACE_MIXINS.isEnabled()) {
             try {
-                super.prepareInjections(mixin);
+                super.prepareInjections(mixin, legacy);
             } catch (InvalidInjectionException ex) {
                 String description = ex.getContext() != null ? ex.getContext().toString() : "Injection";
                 throw new InvalidInterfaceMixinException(mixin, description + " is not supported in interface mixin", ex);

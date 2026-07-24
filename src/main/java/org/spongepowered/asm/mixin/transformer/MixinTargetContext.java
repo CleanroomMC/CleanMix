@@ -35,6 +35,7 @@ import org.objectweb.asm.Handle;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.*;
+import org.spongepowered.asm.mixin.CleanroomUtil;
 import org.spongepowered.asm.mixin.MixinEnvironment;
 import org.spongepowered.asm.mixin.MixinEnvironment.CompatibilityLevel;
 import org.spongepowered.asm.mixin.MixinEnvironment.Option;
@@ -152,6 +153,12 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
      * Injectors for this target 
      */
     private final List<InjectionInfo> injectors = new ArrayList<InjectionInfo>();
+
+    /**
+     * True when this mixin must expose its initialisers to a legacy injector or
+     * explicitly legacy initialiser member
+     */
+    private boolean requiresLegacyInitialiserPass;
 
     /**
      * Accessor method list
@@ -1379,14 +1386,33 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
      * Scans the target class for injector methods and prepares discovered
      * injectors
      */
-    void prepareInjections() {
+    void prepareInjections(boolean legacy) {
         this.activities.clear();
         
         try {
-            this.injectors.clear();
+            if (!legacy) {
+                this.injectors.clear();
+                this.requiresLegacyInitialiserPass = CleanroomUtil.getCompatibility(this) < CleanroomUtil.COMPATIBILITY_0_6_0;
+                for (FieldNode field : this.classNode.fields) {
+                    this.requiresLegacyInitialiserPass |= CleanroomUtil.getCompatibility(this, field) < CleanroomUtil.COMPATIBILITY_0_6_0;
+                }
+                for (MethodNode method : this.classNode.methods) {
+                    if (method.name.startsWith("<")) {
+                        this.requiresLegacyInitialiserPass |= CleanroomUtil.getCompatibility(this, method) < CleanroomUtil.COMPATIBILITY_0_6_0;
+                    }
+                }
+            }
 
             IActivity prepareActivity = this.activities.begin("?");
             for (MethodNode method : this.mergedMethods) {
+                boolean legacyMethod = CleanroomUtil.getCompatibility(this, method) < CleanroomUtil.COMPATIBILITY_0_6_0;
+                if (legacyMethod && InjectionInfo.getInjectorAnnotation(this.getMixin(), method) != null) {
+                    this.requiresLegacyInitialiserPass = true;
+                }
+                if (legacyMethod != legacy) {
+                    continue;
+                }
+
                 prepareActivity.next("%s%s", method.name, method.desc);
                 IActivity methodActivity = this.activities.begin("Parse");
                 InjectionInfo injectInfo = InjectionInfo.parse(this, method);
@@ -1413,6 +1439,10 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
             throw new InvalidMixinException(this, "Unexpecteded " + ex.getClass().getSimpleName() + " whilst transforming the mixin class:", ex,
                     this.activities);
         }
+    }
+
+    boolean requiresLegacyInitialiserPass() {
+        return this.requiresLegacyInitialiserPass;
     }
 
     InjectionInfo getFirstInjectionInfo() {
@@ -1454,7 +1484,7 @@ public class MixinTargetContext extends ClassContext implements IMixinContext {
     }
 
     /**
-     * Apply injectors discovered in the {@link #prepareInjections()} pass
+     * Apply injectors discovered in the {@link #prepareInjections(boolean)} passes
      * 
      * @param injectorOrder injector order for this pass
      */

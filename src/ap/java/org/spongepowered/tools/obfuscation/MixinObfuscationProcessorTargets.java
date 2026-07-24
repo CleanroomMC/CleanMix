@@ -35,6 +35,7 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 
 import org.spongepowered.asm.mixin.Implements;
+import org.spongepowered.asm.mixin.Compatibility;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.gen.Accessor;
@@ -49,6 +50,7 @@ import org.spongepowered.tools.obfuscation.mirror.TypeUtils;
  */
 @SupportedAnnotationTypes({
     "org.spongepowered.asm.mixin.Mixin",
+    "org.spongepowered.asm.mixin.Compatibility",
     "org.spongepowered.asm.mixin.Shadow",
     "org.spongepowered.asm.mixin.Overwrite",
     "org.spongepowered.asm.mixin.gen.Accessor",

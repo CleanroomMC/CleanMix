@@ -112,6 +112,11 @@ final class AnnotatedMixins implements IMixinAnnotationProcessor, ITokenProvider
     private final Map<String, AnnotatedMixin> mixins = new HashMap<String, AnnotatedMixin>();
 
     /**
+     * CleanMix compatibility metadata generator
+     */
+    private final CompatibilityManager compatibility;
+
+    /**
      * Mixins created during this AP pass
      */
     private final List<AnnotatedMixin> mixinsForPass = new ArrayList<AnnotatedMixin>();
@@ -148,6 +153,7 @@ final class AnnotatedMixins implements IMixinAnnotationProcessor, ITokenProvider
     private AnnotatedMixins(ProcessingEnvironment processingEnv) {
         this.env = CompilerEnvironment.detect(processingEnv);
         this.processingEnv = processingEnv;
+        this.compatibility = new CompatibilityManager(this);
 
         MessageType.applyOptions(this.env, this);
         MessageRouter.setMessager(processingEnv.getMessager());
@@ -336,6 +342,13 @@ final class AnnotatedMixins implements IMixinAnnotationProcessor, ITokenProvider
     }
 
     /**
+     * Write out CleanMix compatibility metadata
+     */
+    public void writeCompatibilities() {
+        this.compatibility.write();
+    }
+
+    /**
      * Clear all registered mixins
      */
     public void clear() {
@@ -354,6 +367,7 @@ final class AnnotatedMixins implements IMixinAnnotationProcessor, ITokenProvider
             mixin.runValidators(ValidationPass.EARLY, this.validators);
             this.mixins.put(name, mixin);
             this.mixinsForPass.add(mixin);
+            this.compatibility.registerMixin(mixinType);
         }
     }
 
