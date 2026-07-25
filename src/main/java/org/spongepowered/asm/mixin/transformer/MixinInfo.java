@@ -306,10 +306,11 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
         }
 
         /**
-         * Conform the names of this mixin's injector handler methods. Deliberately does not run the
-         * preparation pass first, unlike {@link #validate}: preparing inner classes resolves the
-         * mixin's declared target classes, and this runs while the mixin is still only lazily
-         * loaded. Nothing in the preparation pass renames injector handlers.
+         * Conform this mixin's injector handler names. Does not run the
+         * preparation pass, unlike {@link #validate}.
+         * Preparing inner classes resolves the declared target classes,
+         * which would defeat lazy loading.
+         * The preparation pass does not rename injector handlers.
          *
          * @param type Mixin Type
          */
@@ -964,11 +965,13 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
     }
 
     /**
-     * Conform the names of this mixin's injector handler methods, so that a derived mixin's plain
-     * override of a handler declared here can be renamed to match it however the two mixins' target
-     * classes end up being ordered. Runs during config preparation rather than in
-     * {@link #validate}, which is deferred until one of this mixin's target classes is transformed.
-     * Idempotent: {@link MethodMapper#remapHandlerMethod} reuses an already conformed name.
+     * Conform this mixin's injector handler names, so that a derived mixin's
+     * plain override of a handler declared here can be renamed to match in
+     * {@link MixinPreProcessorStandard#attachMethod}.
+     * That rename only happens if this mixin was conformed first, therefore it cannot wait for
+     * {@link #validate} which does not run until one of the target classes is transformed.
+     * Safe to call more than once, since {@link MethodMapper#remapHandlerMethod}
+     * already keeps a name that has been decided upon.
      */
     void conformInjectors() {
         if (this.state != null || this.pendingState == null) {
