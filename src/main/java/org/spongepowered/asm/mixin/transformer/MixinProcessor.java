@@ -468,9 +468,8 @@ public class MixinProcessor {
     }
 
     public void refresh() {
-        this.prepareNewConfigs(MixinEnvironment.getCurrentEnvironment());
-
         this.service.offer(new MixinInternalNote("Refresh"));
+        this.prepareNewConfigs(MixinEnvironment.getCurrentEnvironment());
     }
 
     /**

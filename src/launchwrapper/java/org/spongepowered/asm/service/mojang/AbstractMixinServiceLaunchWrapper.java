@@ -32,13 +32,9 @@ import org.spongepowered.asm.logging.ILogger;
 import org.spongepowered.asm.mixin.MixinEnvironment;
 import org.spongepowered.asm.obfuscation.mapping.mcp.Srg2McpRemapper;
 import org.spongepowered.asm.service.IAdviceProvider;
-import org.spongepowered.asm.service.IClassBytecodeProvider;
-import org.spongepowered.asm.service.IClassProvider;
-import org.spongepowered.asm.service.IClassTracker;
 import org.spongepowered.asm.service.IFeatureValidator;
 import org.spongepowered.asm.service.IMixinAuditTrail;
 import org.spongepowered.asm.service.IMixinInternal;
-import org.spongepowered.asm.service.ITransformerProvider;
 import org.spongepowered.asm.service.MixinServiceAbstract;
 import org.spongepowered.asm.service.clean.ICleanMixinService;
 import org.spongepowered.asm.service.clean.NoOpMixinAuditTrail;
@@ -51,15 +47,26 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Everything which touches the classloader is deliberately <em>not</em> here.
+ * A subclass supplies its own instances for:
+ * <ul>
+ *    <li>{@link org.spongepowered.asm.service.IClassProvider IClassProvider}</li>
+ *    <li>{@link org.spongepowered.asm.service.IClassBytecodeProvider IClassBytecodeProvider}</li>
+ *    <li>{@link org.spongepowered.asm.service.ITransformerProvider ITransformerProvider}</li>
+ *    <li>{@link org.spongepowered.asm.service.IClassTracker IClassTracker}</li>
+ * </ul>
+ * <p>Two contracts a subclass's components must honour:</p>
+ * <ul>
+ *   <li>The bytecode provider must replay the loader's transformer chain over mixin bytecode
+ *       it reads apart from the mixin transformer itself and any other re-entrant transformers.</li>
+ *   <li>Any cached view of that chain must be discarded in {@link #onRefresh}.</li>
+ * </ul>
+ */
 public abstract class AbstractMixinServiceLaunchWrapper extends MixinServiceAbstract implements ICleanMixinService {
 
     private static final String PROXY = MixinServiceAbstract.MIXIN_PACKAGE + "transformer.Proxy";
     private static final String STATE_TWEAKER = MixinServiceAbstract.MIXIN_PACKAGE + "EnvironmentStateTweaker";
-
-    private final ClassProvider classProvider = new ClassProvider();
-    private final TransformerProvider transformerProvider = new TransformerProvider();
-    private final ClassLoaderUtil classLoaderUtil = new ClassLoaderUtil(Launch.classLoader);
-    private final BytecodeProvider bytecodeProvider = new BytecodeProvider(transformerProvider, this.getReEntranceLock(), classLoaderUtil);
 
     private MixinAuditFile auditLog;
     private boolean auditLogResolved;
@@ -67,6 +74,29 @@ public abstract class AbstractMixinServiceLaunchWrapper extends MixinServiceAbst
 
     /** Resolve a container to its owner mod id via the loader's mod registry, or {@code null} if unknown. */
     protected abstract String resolveSourceId(URI source);
+
+    /**
+     * Called when {@link org.spongepowered.asm.mixin.transformer.MixinProcessor#refresh} is about to prepare
+     * configs which were registered late, before any of their mixin classes are read.
+     * <p>A service which caches loader state derived from the transformer chain <em>must</em> discard it here.</p>
+     */
+    protected void onRefresh() {
+    }
+
+    /** Whether this is a dev (deobfuscated) launch. Default detects Gradle's {@code GradleStart}. */
+    protected boolean isDevelopment() {
+        return System.getProperty("sun.java.command", "").contains("GradleStart");
+    }
+
+    /**
+     * Override to enable a dedicated mixin log + audit trail.
+     * <p>Return a {@link MixinAuditFile} (e.g. {@code new MixinAuditFile("cleanmix.log", "cleanmix.auditTrail")})
+     * and {@link #getAuditTrail()} will record apply/post-process/generate events into it.</p>
+     * <p>Default {@code null} (disabled). Resolved once.</p>
+     */
+    protected MixinAuditFile createAuditLog() {
+        return null;
+    }
 
     @Override
     public boolean isValid() {
@@ -94,19 +124,15 @@ public abstract class AbstractMixinServiceLaunchWrapper extends MixinServiceAbst
     @Override
     public void offer(IMixinInternal internal) {
         super.offer(internal);
-        // MixinProcessor#refresh offers a "Refresh" internal when configs are (re-)selected late.
-        // Rebuild the delegated transformer list so transformers registered since are picked up.
         if ("Refresh".equals(internal.toString())) {
-            this.transformerProvider.refreshDelegatedTransformers();
+            this.onRefresh();
         }
     }
 
     @Override
     public void beginPhase() {
         Launch.classLoader.registerTransformer(PROXY);
-        // The mixin transformer must never be in the delegated chain BytecodeProvider applies when fetching a
-        // target class's bytecode, else resolving a mixin target re-enters the pipeline and StackOverflows.
-        this.transformerProvider.addTransformerExclusion(PROXY);
+        this.getTransformerProvider().addTransformerExclusion(PROXY);
     }
 
     @Override
@@ -116,26 +142,6 @@ public abstract class AbstractMixinServiceLaunchWrapper extends MixinServiceAbst
             MixinEnvironment environment = MixinEnvironment.getDefaultEnvironment();
             environment.getRemappers().add(new Srg2McpRemapper(environment));
         }
-    }
-
-    @Override
-    public IClassProvider getClassProvider() {
-        return classProvider;
-    }
-
-    @Override
-    public IClassBytecodeProvider getBytecodeProvider() {
-        return bytecodeProvider;
-    }
-
-    @Override
-    public ITransformerProvider getTransformerProvider() {
-        return transformerProvider;
-    }
-
-    @Override
-    public IClassTracker getClassTracker() {
-        return classLoaderUtil;
     }
 
     @Override
@@ -224,20 +230,6 @@ public abstract class AbstractMixinServiceLaunchWrapper extends MixinServiceAbst
             i--;
         }
         return name.substring(0, i);
-    }
-
-    /** Whether this is a dev (deobfuscated) launch. Default detects Gradle's {@code GradleStart}. */
-    protected boolean isDevelopment() {
-        return System.getProperty("sun.java.command", "").contains("GradleStart");
-    }
-
-    /**
-     * Override to enable a dedicated mixin log + audit trail: return a {@link MixinAuditFile} (e.g.
-     * {@code new MixinAuditFile("cleanmix.log", "cleanmix.auditTrail")}) and {@link #getAuditTrail()}
-     * will record apply/post-process/generate events into it. Default {@code null} (disabled). Resolved once.
-     */
-    protected MixinAuditFile createAuditLog() {
-        return null;
     }
 
     /**
