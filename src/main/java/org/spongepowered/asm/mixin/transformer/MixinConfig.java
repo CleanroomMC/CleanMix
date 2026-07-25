@@ -900,6 +900,21 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
 //                iter.remove();
 //            }
 //        }
+
+        // Validation stays lazy, but handler naming cannot: a derived mixin's plain override of an
+        // injector handler declared in a parent mixin is renamed to match the parent's conformed
+        // name in MixinPreProcessorStandard#attachMethod, which only works if the parent was
+        // conformed first. Leaving that to MixinInfo#validate ties it to the order in which the two
+        // target classes happen to be transformed, and nothing here controls that order. Handler
+        // names do not depend on the target class, so conform them now - this resolves no target
+        // ClassInfo and so leaves the mixins as lazily loaded as they were.
+        for (MixinInfo mixin : this.mixins) {
+            try {
+                mixin.conformInjectors();
+            } catch (Exception ex) {
+                this.logger.error("Error conforming injector handler names in " + mixin + ": " + ex.getMessage(), ex);
+            }
+        }
     }
 
     void removeMixin(MixinInfo remove) {

@@ -306,6 +306,18 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
         }
 
         /**
+         * Conform the names of this mixin's injector handler methods. Deliberately does not run the
+         * preparation pass first, unlike {@link #validate}: preparing inner classes resolves the
+         * mixin's declared target classes, and this runs while the mixin is still only lazily
+         * loaded. Nothing in the preparation pass renames injector handlers.
+         *
+         * @param type Mixin Type
+         */
+        void conformInjectors(SubType type) {
+            type.createPreProcessor(this.getValidationClassNode()).conform();
+        }
+
+        /**
          * Performs pre-flight checks on the mixin
          * 
          * @param type Mixin Type
@@ -949,6 +961,20 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
         } catch (Exception ex) {
             throw new InvalidMixinException(this, ex);
         }
+    }
+
+    /**
+     * Conform the names of this mixin's injector handler methods, so that a derived mixin's plain
+     * override of a handler declared here can be renamed to match it however the two mixins' target
+     * classes end up being ordered. Runs during config preparation rather than in
+     * {@link #validate}, which is deferred until one of this mixin's target classes is transformed.
+     * Idempotent: {@link MethodMapper#remapHandlerMethod} reuses an already conformed name.
+     */
+    void conformInjectors() {
+        if (this.state != null || this.pendingState == null) {
+            return;
+        }
+        this.pendingState.conformInjectors(this.type);
     }
 
     /**

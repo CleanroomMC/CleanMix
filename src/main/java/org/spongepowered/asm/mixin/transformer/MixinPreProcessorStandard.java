@@ -250,6 +250,22 @@ class MixinPreProcessorStandard {
         // stub
     }
     
+    /**
+     * Conform this mixin's injector handler methods without reference to a target class. Handler
+     * names are a function of the declaring mixin and the handler method alone, see
+     * {@link MethodMapper#getHandlerName}: the {@link MethodMapper} the name is minted by never
+     * reads the {@link ClassInfo} it belongs to, so conforming against the mixin's own
+     * {@link ClassInfo} yields exactly the name any target would have produced. Doing so before any
+     * target class is transformed is what allows a derived mixin's plain override of an inherited
+     * handler to be renamed to match it in {@link #attachMethod}, whichever of the two target
+     * classes is transformed first.
+     *
+     * @return this preprocessor
+     */
+    final MixinPreProcessorStandard conform() {
+        return this.conform(this.mixin.getClassInfo());
+    }
+
     final MixinPreProcessorStandard conform(TargetClassContext target) {
         return this.conform(target.getClassInfo());
     }
