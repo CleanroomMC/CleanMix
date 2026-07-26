@@ -41,17 +41,8 @@ import net.minecraft.launchwrapper.IClassTransformer;
  */
 public final class Proxy implements IClassTransformer, ILegacyClassTransformer {
 
-    /**
-     * Actual mixin transformer instance
-     * Stop using reflection or grabbing this field directly!
-     * Call {@link Proxy#refreshMixins()} instead!
-     */
     @Deprecated
     public static MixinTransformer transformer = new MixinTransformer();
-
-    public static void refreshMixins() {
-        transformer.refresh();
-    }
 
     /**
      * All existing proxies
