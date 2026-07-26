@@ -42,7 +42,7 @@ import net.minecraft.launchwrapper.IClassTransformer;
 public final class Proxy implements IClassTransformer, ILegacyClassTransformer {
 
     @Deprecated
-    public static MixinTransformer transformer = new MixinTransformer();
+    private static MixinTransformer transformer = new MixinTransformer();
 
     /**
      * All existing proxies
