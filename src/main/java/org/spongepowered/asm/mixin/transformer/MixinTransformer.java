@@ -35,6 +35,7 @@ import org.spongepowered.asm.mixin.throwables.MixinException;
 import org.spongepowered.asm.mixin.transformer.ext.Extensions;
 import org.spongepowered.asm.mixin.transformer.ext.IExtensionRegistry;
 import org.spongepowered.asm.mixin.transformer.ext.IHotSwap;
+import org.spongepowered.asm.service.clean.ICleanMixinTransformer;
 import org.spongepowered.asm.transformers.TreeTransformer;
 import org.spongepowered.asm.util.Constants;
 import org.spongepowered.asm.util.asm.ASM;
@@ -42,7 +43,7 @@ import org.spongepowered.asm.util.asm.ASM;
 /**
  * Transformer which manages the mixin configuration and application process
  */
-public final class MixinTransformer extends TreeTransformer implements IMixinTransformer {
+public final class MixinTransformer extends TreeTransformer implements IMixinTransformer, ICleanMixinTransformer {
     
     /**
      * Impl of mixin transformer factory
@@ -291,7 +292,15 @@ public final class MixinTransformer extends TreeTransformer implements IMixinTra
     public synchronized boolean generateClass(MixinEnvironment environment, String name, ClassNode classNode) {
         return this.generator.generateClass(environment, name, classNode);
     }
-    
+
+    /**
+     * @see ICleanMixinTransformer#refresh()
+     */
+    @Override
+    public void refresh() {
+        this.processor.refresh();
+    }
+
     /**
      * You need to ask yourself why you're reading this comment  
      */

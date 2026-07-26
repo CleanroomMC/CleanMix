@@ -52,6 +52,7 @@ import org.spongepowered.asm.service.ITransformer;
 import org.spongepowered.asm.service.ITransformerProvider;
 import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.service.clean.ICleanMixinService;
+import org.spongepowered.asm.service.clean.ICleanMixinTransformer;
 import org.spongepowered.asm.util.Constants;
 import org.spongepowered.asm.util.ITokenProvider;
 import org.spongepowered.asm.util.JavaVersion;
@@ -1901,14 +1902,16 @@ public final class MixinEnvironment implements ITokenProvider {
         if (phase == null || phase.ordinal < 0) {
             throw new IllegalArgumentException("Cannot go to the specified phase, phase is null or invalid");
         }
-        MixinEnvironment.currentPhase = phase;
-        MixinEnvironment.currentEnvironment = MixinEnvironment.getEnvironment(MixinEnvironment.getCurrentPhase());
-        // Allow beginPhase to be called after transition
-        IMixinService service = MixinService.getService();
         if (phase.ordinal > MixinEnvironment.getCurrentPhase().ordinal) {
-            service.beginPhase();
-        }
+            MixinEnvironment.currentPhase = phase;
+            MixinEnvironment.currentEnvironment = MixinEnvironment.getEnvironment(MixinEnvironment.getCurrentPhase());
 
+            MixinService.getService().beginPhase();
+            IMixinTransformer transformer = MixinEnvironment.transformer;
+            if (transformer instanceof ICleanMixinTransformer) {
+                ((ICleanMixinTransformer) transformer).refresh();
+            }
+        }
     }
 
 }
