@@ -46,6 +46,7 @@ import java.net.URL;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Everything which touches the classloader is deliberately <em>not</em> here.
@@ -67,6 +68,8 @@ public abstract class AbstractMixinServiceLaunchWrapper extends MixinServiceAbst
 
     private static final String PROXY = MixinServiceAbstract.MIXIN_PACKAGE + "transformer.Proxy";
     private static final String STATE_TWEAKER = MixinServiceAbstract.MIXIN_PACKAGE + "EnvironmentStateTweaker";
+
+    protected Consumer<MixinEnvironment.Phase> phaseTransitioner;
 
     private MixinAuditFile auditLog;
     private boolean auditLogResolved;
@@ -186,6 +189,11 @@ public abstract class AbstractMixinServiceLaunchWrapper extends MixinServiceAbst
     @Override
     public URL getResource(String name) {
         return Launch.classLoader.findResource(name);
+    }
+
+    @Override
+    public void acceptPhaseTransitioner(Consumer<MixinEnvironment.Phase> phaseTransitioner) {
+        this.phaseTransitioner = phaseTransitioner;
     }
 
     @Override

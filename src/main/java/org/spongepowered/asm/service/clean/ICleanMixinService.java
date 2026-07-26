@@ -24,8 +24,11 @@
  */
 package org.spongepowered.asm.service.clean;
 
+import org.spongepowered.asm.mixin.MixinEnvironment;
+
 import java.net.URI;
 import java.net.URL;
+import java.util.function.Consumer;
 
 /**
  * CleanMix extension methods for IMixinService instances
@@ -50,5 +53,13 @@ public interface ICleanMixinService {
      * @return suitable string source identifier or null if it cannot be resolved
      */
     String getSourceId(URI source);
+
+    /**
+     * Pass a phase transitioner based on {@link MixinEnvironment#gotoPhase(MixinEnvironment.Phase)}
+     * to allow clean services to be able to transition phases from within the service class.
+     *
+     * @param transitioner method that consumes phases to transition environments
+     */
+    void acceptPhaseTransitioner(Consumer<MixinEnvironment.Phase> transitioner);
 
 }

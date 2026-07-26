@@ -28,7 +28,6 @@ import java.io.File;
 import java.util.List;
 
 import org.spongepowered.asm.launch.MixinBootstrap;
-import org.spongepowered.asm.service.MixinService;
 
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.LaunchClassLoader;
@@ -52,7 +51,7 @@ public class EnvironmentStateTweaker implements ITweaker {
 
     @Override
     public String[] getLaunchArguments() {
-        MixinService.getService().beginPhase();
+        MixinEnvironment.gotoPhase(MixinEnvironment.Phase.DEFAULT);
         return new String[0];
     }
     

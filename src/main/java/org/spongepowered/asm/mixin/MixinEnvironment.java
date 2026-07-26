@@ -51,6 +51,7 @@ import org.spongepowered.asm.service.IMixinService;
 import org.spongepowered.asm.service.ITransformer;
 import org.spongepowered.asm.service.ITransformerProvider;
 import org.spongepowered.asm.service.MixinService;
+import org.spongepowered.asm.service.clean.ICleanMixinService;
 import org.spongepowered.asm.util.Constants;
 import org.spongepowered.asm.util.ITokenProvider;
 import org.spongepowered.asm.util.JavaVersion;
@@ -96,6 +97,22 @@ public final class MixinEnvironment implements ITokenProvider {
             Phase.INIT,
             Phase.DEFAULT
         );
+
+        /**
+         * Get a phase by name, returns <tt>null</tt> if no phases exist with
+         * the specified name
+         *
+         * @param name phase name to lookup
+         * @return phase object or <tt>null</tt> if non existent
+         */
+        public static Phase forName(String name) {
+            for (Phase phase : Phase.phases) {
+                if (phase.name.equals(name)) {
+                    return phase;
+                }
+            }
+            return null;
+        }
         
         /**
          * Phase ordinal
@@ -123,19 +140,13 @@ public final class MixinEnvironment implements ITokenProvider {
         }
 
         /**
-         * Get a phase by name, returns <tt>null</tt> if no phases exist with
-         * the specified name
-         * 
-         * @param name phase name to lookup
-         * @return phase object or <tt>null</tt> if non existent
+         * @return if phase has been reached in the global mixin environment
          */
-        public static Phase forName(String name) {
-            for (Phase phase : Phase.phases) {
-                if (phase.name.equals(name)) {
-                    return phase;
-                }
+        public boolean hasReached() {
+            if (MixinEnvironment.currentPhase == null) {
+                return false;
             }
-            return null;
+            return this.ordinal <= MixinEnvironment.currentPhase.ordinal;
         }
 
         MixinEnvironment getEnvironment() {
@@ -1293,9 +1304,14 @@ public final class MixinEnvironment implements ITokenProvider {
     }
 
     /**
-     * Whether the environment has been initialised
+     * Currently active environment, set to null until the phases have been populated
      */
-    private static boolean initialised;
+    private static MixinEnvironment currentEnvironment;
+
+    /**
+     * Current (active) environment phase, set to null until the phases have been populated
+     */
+    private static Phase currentPhase;
 
     /**
      * Current compatibility level
@@ -1747,6 +1763,16 @@ public final class MixinEnvironment implements ITokenProvider {
     public String toString() {
         return String.format("%s[%s]", this.getClass().getSimpleName(), this.phase);
     }
+
+    /**
+     * Get the current phase, triggers initialisation if necessary
+     */
+    private static Phase getCurrentPhase() {
+        if (MixinEnvironment.currentPhase == null) {
+            MixinEnvironment.init(Phase.PREINIT);
+        }
+        return MixinEnvironment.currentPhase;
+    }
     
     /**
      * Initialise the mixin environment in the specified phase
@@ -1754,9 +1780,12 @@ public final class MixinEnvironment implements ITokenProvider {
      * @param phase initial phase
      */
     public static void init(Phase phase) {
-        if (!MixinEnvironment.initialised) {
-            MixinEnvironment.initialised = true;
+        if (MixinEnvironment.currentPhase == null) {
+            MixinEnvironment.currentPhase = phase;
             MixinEnvironment env = MixinEnvironment.getEnvironment(phase);
+            if (MixinService.getService() instanceof ICleanMixinService) {
+                ((ICleanMixinService) MixinService.getService()).acceptPhaseTransitioner(MixinEnvironment::gotoPhase);
+            }
             Profiler.setActive(env.getOption(Option.DEBUG_PROFILER));
         }
     }
@@ -1784,14 +1813,15 @@ public final class MixinEnvironment implements ITokenProvider {
     }
 
     /**
-     * Gets the current environment.
+     * Gets the current environment
      *
-     * <p>CLEANROOM: Note, as of 0.2.0, phases are being removed.
-     * The active environment is always {@link Phase#DEFAULT}.
      * @return the currently active environment
      */
     public static MixinEnvironment getCurrentEnvironment() {
-        return MixinEnvironment.getEnvironment(Phase.DEFAULT);
+        if (MixinEnvironment.currentEnvironment == null) {
+            MixinEnvironment.currentEnvironment = MixinEnvironment.getEnvironment(MixinEnvironment.getCurrentPhase());
+        }
+        return MixinEnvironment.currentEnvironment;
     }
 
     /**
@@ -1861,7 +1891,26 @@ public final class MixinEnvironment implements ITokenProvider {
         return Profiler.getProfiler("mixin");
     }
 
-    @SuppressWarnings("deprecation")
+    /**
+     * Advance to the specified phase.
+     * Only ever moves forward, and only affects whether pending configs may be prepared. See {@link #currentPhase}.
+     *
+     * @param phase phase to advance to
+     */
     static void gotoPhase(Phase phase) {
+        if (phase == null || phase.ordinal < 0) {
+            throw new IllegalArgumentException("Cannot go to the specified phase, phase is null or invalid");
+        }
+        IMixinService service = MixinService.getService();
+        if (phase.ordinal > MixinEnvironment.getCurrentPhase().ordinal) {
+            service.beginPhase();
+        }
+        MixinEnvironment.currentPhase = phase;
+        MixinEnvironment.currentEnvironment = MixinEnvironment.getEnvironment(MixinEnvironment.getCurrentPhase());
     }
+
+    public static boolean isPhaseReached(Phase phase) {
+        return (phase != null ? phase : Phase.DEFAULT).ordinal <= MixinEnvironment.currentPhase.ordinal;
+    }
+
 }

@@ -495,8 +495,9 @@ public class MixinProcessor {
             this.extensions.select(environment);
 
             int totalMixins = 0;
-            while (Mixins.getUnvisitedCount() > 0) {
-                List<MixinConfig> batch = this.consumeConfigs();
+            // Loop on what was actually consumed, not on the pending count
+            // Configs whose phase has not been reached stay pending
+            for (List<MixinConfig> batch = this.consumeConfigs(); !batch.isEmpty(); batch = this.consumeConfigs()) {
                 totalMixins += this.prepareBatch(batch, environment);
             }
 
@@ -522,7 +523,18 @@ public class MixinProcessor {
     }
 
     /**
-     * Drain the global pending config set, initialize each config, and return the batch for preparation.
+     * Drain the pending configs whose phase has been reached, initialize each, and return the batch for
+     * preparation. Configs declaring a phase which is still ahead of us are left pending and picked up by a
+     * later call.
+     *
+     * <p>Preparing a config reads the bytecode of every mixin it declares, through the loader's transformer
+     * chain. Anything read before that chain is complete misses the transformers registered after.
+     * On Forge most visibly {@code SideTransformer}, leaving a {@code @SideOnly} member in a mixin whose
+     * target has correctly had it stripped. Since classloading a transformer re-enters this pipeline,
+     * the first coremod transformer to be registered would otherwise pull every pending config through
+     * preparation from inside {@code injectIntoClassLoader}, which is the earliest possible moment and the
+     * worst one. A config which genuinely must be ready that early opts in with
+     * {@code "target": "@env(PREINIT)"}.</p>
      */
     private List<MixinConfig> consumeConfigs() {
         List<MixinConfig> batch = new ArrayList<MixinConfig>();
@@ -530,6 +542,9 @@ public class MixinProcessor {
         for (Config handle : new ArrayList<Config>(globalConfigs)) {
             try {
                 MixinConfig config = handle.get();
+                if (!config.getEnvironment().getPhase().hasReached()) {
+                    continue;
+                }
                 globalConfigs.remove(handle);
                 MixinProcessor.logger.log(this.verboseLoggingLevel, "Preparing config {}", config);
                 config.onSelect();
