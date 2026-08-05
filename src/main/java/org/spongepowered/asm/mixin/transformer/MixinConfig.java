@@ -876,44 +876,47 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
                 break;
         }
     }
-    
+
+    /**
+     * CLEANROOM CHANGES:
+     *
+     * <p>{@link IListener#onInit(MixinInfo) The listener's onInit()}
+     * is fired lazily at {@link MixinInfo#validate() the mixin's validate()}.
+     * Thus, we need to make sure {@link MixinInfo#conformInjectors()} and
+     * {@link MixinInheritanceTracker#register(MixinInfo)} both happens before
+     * any target classes are transformed. As they both track relationships
+     * between mixins that are consumed while applying mixins at the same time.
+     *
+     * <p>Note that both of the aforementioned calls do NOT resolve the target classes.
+     *
+     * @param extensions the processor's internal extensions
+     */
     void postInitialise(Extensions extensions) {
         if (this.plugin != null) {
             List<String> pluginMixins = this.plugin.getMixins();
             this.prepareMixins("companion plugin", pluginMixins, true, extensions);
         }
-
-        // See: MixinInfo#validate
-//        for (Iterator<MixinInfo> iter = this.mixins.iterator(); iter.hasNext();) {
-//            MixinInfo mixin = iter.next();
-//            try {
-//                for (IListener listener : this.listeners) {
-//                    listener.onInit(mixin);
-//                }
-//            } catch (InvalidMixinException ex) {
-//                this.logger.error(ex.getMixin() + ": " + ex.getMessage(), ex);
-//                this.removeMixin(mixin);
-//                iter.remove();
-//            } catch (Exception ex) {
-//                this.logger.error(ex.getMessage(), ex);
-//                this.removeMixin(mixin);
-//                iter.remove();
-//            }
-//        }
-
-        // Handler names have to be decided before any target class is transformed
-        // See MixinInfo#conformInjectors
-        // Nothing resolves a target class here, so the mixins stay as lazily loaded as they were
         for (MixinInfo mixin : this.mixins) {
             try {
                 mixin.conformInjectors();
             } catch (Exception ex) {
                 this.logger.error("Error conforming injector handler names in " + mixin + ": " + ex.getMessage(), ex);
             }
+            try {
+                MixinInheritanceTracker.INSTANCE.register(mixin);
+            } catch (Exception ex) {
+                this.logger.error("Error registering mixin inheritance for " + mixin + ": " + ex.getMessage(), ex);
+            }
+        }
+        try {
+            MixinInheritanceTracker.INSTANCE.retryPending();
+        } catch (Exception ex) {
+            this.logger.error("Error re-registering deferred mixin inheritance: " + ex.getMessage(), ex);
         }
     }
 
     void removeMixin(MixinInfo remove) {
+        MixinInheritanceTracker.INSTANCE.unregister(remove);
         for (List<MixinInfo> mixinsFor : this.mixinMapping.values()) {
             for (Iterator<MixinInfo> iter = mixinsFor.iterator(); iter.hasNext();) {
                 if (remove == iter.next()) {

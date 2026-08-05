@@ -35,6 +35,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.spongepowered.asm.logging.Level;
 import org.spongepowered.asm.logging.ILogger;
@@ -685,6 +686,14 @@ public final class ClassInfo {
     private static final Map<String, ClassInfo> cache = new HashMap<String, ClassInfo>();
 
     private static final ClassInfo OBJECT = new ClassInfo();
+
+    /**
+     * Number of times a placeholder ClassInfo has been replaced by the metadata
+     * for the mixin it turned out to describe.
+     *
+     * @see #fromClassNode
+     */
+    private static final AtomicInteger mixinUpgrades = new AtomicInteger();
 
     static {
         ClassInfo.cache.put(ClassInfo.JAVA_LANG_OBJECT, ClassInfo.OBJECT);
@@ -2076,9 +2085,53 @@ public final class ClassInfo {
         if (info == null) {
             info = new ClassInfo(classNode);
             ClassInfo.cache.put(classNode.name, info);
+        } else if (classNode instanceof MixinClassNode && !info.isMixin && info.mixins.isEmpty()) {
+            // The cached entry was built from plain bytecode before this mixin was prepared
+            // Happens when the mixin class is resolved as an ordinary supertype first then the
+            // derived mixins whose parents are declared in a config is prepared later
+            ClassInfo.logger.debug("Replacing placeholder class metadata for mixin {}", classNode.name);
+            info = new ClassInfo(classNode);
+            ClassInfo.cache.put(classNode.name, info);
+            ClassInfo.invalidateReferences(info, classNode.name);
+            ClassInfo.mixinUpgrades.incrementAndGet();
         }
-
         return info;
+    }
+
+    /**
+     * Drop every lazily resolved reference to the stale ClassInfo previously
+     * cached for the supplied name, so that consumers holding the owning
+     * ClassInfo resolve the replacement on next use
+     *
+     * @param replacement the ClassInfo which is now cached for the name
+     * @param name name of the class whose metadata was replaced
+     */
+    private static void invalidateReferences(ClassInfo replacement, String name) {
+        for (ClassInfo info : ClassInfo.cache.values()) {
+            if (info == null || info == replacement) {
+                continue;
+            }
+            if (info.superClass != null && name.equals(info.superClass.name)) {
+                info.superClass = null;
+            }
+            if (info.outerClass != null && name.equals(info.outerClass.name)) {
+                info.outerClass = null;
+            }
+            info.correspondingTypes.clear();
+        }
+    }
+
+    /**
+     * Get the number of times a placeholder ClassInfo has been replaced by the
+     * metadata for the mixin it turned out to describe.
+     *
+     * <p>Consumers which cache decisions derived from {@link #isMixin}
+     * can use this to detect that said decisions may need to be made again.
+     *
+     * @return placeholder replacement count
+     */
+    static int getMixinUpgrades() {
+        return ClassInfo.mixinUpgrades.get();
     }
 
     /**
