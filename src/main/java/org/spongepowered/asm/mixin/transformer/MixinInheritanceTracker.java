@@ -80,21 +80,27 @@ public enum MixinInheritanceTracker implements IListener {
         if (!this.registered.add(mixin)) {
             return;
         }
+        this.registrations++;
         this.link(mixin);
     }
 
     /**
      * Re-link mixins whose supertype walk previously ran into a class which was
-     * not known to be a mixin at the time. This only does something once
-     * {@link ClassInfo} reports that it has replaced at least one placeholder.
-     * Which happens when the parent mixin's own config is prepared
-     * after the child mixin was registered.
+     * not known to be a mixin at the time. This only does something after a new
+     * mixin has been registered or {@link ClassInfo} reports that it has
+     * replaced a placeholder. Either can happen when the parent mixin's own
+     * config is prepared after the child mixin was registered.
      */
     synchronized void retryPending() {
-        if (this.pending.isEmpty() || ClassInfo.getMixinUpgrades() == this.lastMixinUpgrades) {
+        if (this.pending.isEmpty()) {
             return;
         }
-        this.lastMixinUpgrades = ClassInfo.getMixinUpgrades();
+        int upgrades = ClassInfo.getMixinUpgrades();
+        if (this.registrations == this.lateRegistrations && upgrades == this.lastUpgrade) {
+            return;
+        }
+        this.lateRegistrations = this.registrations;
+        this.lastUpgrade = upgrades;
         List<MixinInfo> retry = new ArrayList<MixinInfo>(this.pending);
         this.pending.clear();
         for (MixinInfo mixin : retry) {
@@ -121,17 +127,19 @@ public enum MixinInheritanceTracker implements IListener {
         ClassInfo mixinInfo = mixin.getClassInfo();
         assert mixinInfo.isMixin(); //  The mixin should certainly be a mixin
 
-        ClassInfo superType = mixinInfo.getSuperClass();
-        for (; superType != null && superType.isMixin(); superType = superType.getSuperClass()) {
+        String superName = mixinInfo.getSuperName();
+        while (superName != null && !MixinInheritanceTracker.OBJECT.equals(superName)) {
+            ClassInfo superType = ClassInfo.fromCache(superName);
+            if (superType == null || !superType.isMixin()) {
+                this.pending.add(mixin);
+                return;
+            }
             List<MixinInfo> children = parentMixins.get(superType.getName());
             if (children == null) {
                 parentMixins.put(superType.getName(), children = new CopyOnWriteArrayList<MixinInfo>());
             }
             children.add(mixin);
-        }
-        // The walk stopped at an ancestor which isn't a mixin
-        if (superType != null && !MixinInheritanceTracker.OBJECT.equals(superType.getName())) {
-            this.pending.add(mixin);
+            superName = superType.getSuperName();
         }
     }
 
@@ -203,5 +211,9 @@ public enum MixinInheritanceTracker implements IListener {
      */
     private final Set<MixinInfo> pending = Collections.newSetFromMap(new IdentityHashMap<MixinInfo, Boolean>());
 
-    private int lastMixinUpgrades = ClassInfo.getMixinUpgrades();
+    private int registrations;
+
+    private int lateRegistrations;
+
+    private int lastUpgrade = ClassInfo.getMixinUpgrades();
 }
