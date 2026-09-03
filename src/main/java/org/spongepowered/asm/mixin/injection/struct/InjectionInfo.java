@@ -466,6 +466,9 @@ public abstract class InjectionInfo extends SpecialMethodInfo implements ISliceC
         this.activities.clear();
         try {
             this.targetNodes.clear();
+            // CLEANROOM: targetCount was lost in the 0.8.6 target-selector refactor and has read
+            // as 0 ever since, making every failure report "Scanned 0 target(s)".
+            this.targetCount = this.targets.size();
             IActivity activity = this.activities.begin("?");
             for (SelectedMethod targetMethod : this.targets) {
                 activity.next("{ target: %s }", targetMethod);
