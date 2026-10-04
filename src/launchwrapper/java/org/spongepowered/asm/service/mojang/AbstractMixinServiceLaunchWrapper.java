@@ -87,7 +87,7 @@ public abstract class AbstractMixinServiceLaunchWrapper extends MixinServiceAbst
     protected void onRefresh() {
     }
 
-    /** Whether this is a dev (deobfuscated) launch. Default detects Gradle's {@code GradleStart}. */
+    /** Whether this is a dev (deobfuscated) launch. Default detects {@code net.minecraftforge.gradle.GradleStart.srg.srg-mcp}. */
     protected boolean isDevelopment() {
         return System.getProperty(DEFAULT_RESOURCE_PATH_PROPERTY) != null;
     }
