@@ -71,6 +71,11 @@ public abstract class MixinBootstrap {
      * Transformer factory 
      */
     private static final String MIXIN_TRANSFORMER_FACTORY_CLASS = "org.spongepowered.asm.mixin.transformer.MixinTransformer$Factory";
+
+    /**
+     * LaunchWrapper class loader isolation, see {@link #isolate}
+     */
+    private static final String CLASS_LOADER_ISOLATION_CLASS = "org.spongepowered.asm.launch.LaunchClassLoaderIsolation";
     
     
     // These are Klass local, with luck this shouldn't be a problem
@@ -84,6 +89,7 @@ public abstract class MixinBootstrap {
     
     // Static initialiser, run boot services as early as possible
     static {
+        MixinBootstrap.isolate();
         MixinService.boot();
         MixinService.getService().prepare();
         MixinBootstrap.logger = MixinService.getService().getLogger("CleanMix");
@@ -95,6 +101,20 @@ public abstract class MixinBootstrap {
     private static MixinPlatformManager platform;
 
     private MixinBootstrap() {}
+
+    /**
+     * Under LaunchWrapper the subsystem must not be defined by the LaunchClassLoader.
+     * See <tt>org.spongepowered.asm.launch.LaunchClassLoaderIsolation</tt> for why.
+     *
+     * <p>Must run before any other subsystem class is resolved.</p>
+     */
+    private static void isolate() {
+        try {
+            Class.forName(MixinBootstrap.CLASS_LOADER_ISOLATION_CLASS, true, MixinBootstrap.class.getClassLoader()).getDeclaredMethod("apply").invoke(null);
+        } catch (Throwable ex) {
+            // Not a LaunchWrapper environment
+        }
+    }
     
     /**
      * @deprecated use <tt>MixinService.getService().beginPhase()</tt> instead
