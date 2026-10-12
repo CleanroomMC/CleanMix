@@ -66,6 +66,7 @@ import java.util.function.Consumer;
  */
 public abstract class AbstractMixinServiceLaunchWrapper extends MixinServiceAbstract implements ICleanMixinService {
 
+    private static final String DEFAULT_RESOURCE_PATH_PROPERTY = "net.minecraftforge.gradle.GradleStart.srg.srg-mcp";
     private static final String PROXY = MixinServiceAbstract.MIXIN_PACKAGE + "transformer.Proxy";
     private static final String STATE_TWEAKER = MixinServiceAbstract.MIXIN_PACKAGE + "EnvironmentStateTweaker";
 
@@ -86,9 +87,9 @@ public abstract class AbstractMixinServiceLaunchWrapper extends MixinServiceAbst
     protected void onRefresh() {
     }
 
-    /** Whether this is a dev (deobfuscated) launch. Default detects Gradle's {@code GradleStart}. */
+    /** Whether this is a dev (deobfuscated) launch. Default detects {@code net.minecraftforge.gradle.GradleStart.srg.srg-mcp}. */
     protected boolean isDevelopment() {
-        return System.getProperty("sun.java.command", "").contains("GradleStart");
+        return System.getProperty(DEFAULT_RESOURCE_PATH_PROPERTY) != null;
     }
 
     /**
