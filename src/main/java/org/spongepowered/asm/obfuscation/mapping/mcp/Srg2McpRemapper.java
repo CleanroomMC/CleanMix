@@ -138,6 +138,12 @@ public class Srg2McpRemapper implements IRemapper {
                     if (Strings.isNullOrEmpty(line) || line.startsWith("#")) {
                         return true;
                     }
+                    if (line.startsWith("\t")) {
+                        // TSRG member, either "srg mcp" for a field or "srg desc mcp" for a method
+                        String[] entries = line.trim().split(" ");
+                        map.put(entries[0], entries[entries.length - 1]);
+                        return true;
+                    }
                     int fromPos = 0, toPos = 0;
                     if ((toPos = line.startsWith("MD: ") ? 2 : line.startsWith("FD: ") ? 1 : 0) > 0) {
                         String[] entries = line.substring(4).split(" ", 4);
