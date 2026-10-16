@@ -47,8 +47,8 @@ import org.spongepowered.asm.mixin.injection.selectors.ITargetSelectorDynamic;
 import org.spongepowered.asm.mixin.transformer.ext.IExtension;
 import org.spongepowered.asm.mixin.throwables.ClassAlreadyLoadedException;
 import org.spongepowered.asm.mixin.throwables.MixinApplyError;
+import org.spongepowered.asm.mixin.throwables.MixinError;
 import org.spongepowered.asm.mixin.throwables.MixinException;
-import org.spongepowered.asm.mixin.throwables.MixinPrepareError;
 import org.spongepowered.asm.mixin.transformer.MixinConfig.IListener;
 import org.spongepowered.asm.mixin.transformer.MixinCoprocessor.ProcessResult;
 import org.spongepowered.asm.mixin.transformer.MixinInfo.Variant;
@@ -425,6 +425,9 @@ public class MixinProcessor {
             } catch (Exception ex) {
                 this.lock.pop();
                 throw new MixinException(ex);
+            } catch (Throwable th) {
+                this.lock.pop();
+                throw th;
             }
         }
 
@@ -563,6 +566,7 @@ public class MixinProcessor {
      */
     private int prepareBatch(List<MixinConfig> batch, MixinEnvironment environment) {
         int totalMixins = 0;
+        List<MixinConfig> failed = new ArrayList<MixinConfig>();
 
         final IHotSwap hotSwapper = this.hotSwapper;
         for (MixinConfig config : batch) {
@@ -589,12 +593,15 @@ public class MixinProcessor {
                 config.prepare(this.extensions);
                 totalMixins += config.getMixinCount();
             } catch (InvalidMixinException ex) {
-                this.handleMixinPrepareError(config, ex, environment);
+                if (!this.handleMixinPrepareError(config, ex, environment)) {
+                    failed.add(config);
+                }
             } catch (Exception ex) {
                 String message = ex.getMessage();
                 MixinProcessor.logger.error("Error encountered whilst initialising mixin config '" + config.getName() + "' from mod '" + CleanroomUtil.getModId(config) + "': " + message, ex);
             }
         }
+        batch.removeAll(failed);
 
         for (MixinConfig config : batch) {
             IMixinConfigPlugin plugin = config.getPlugin();
@@ -619,12 +626,15 @@ public class MixinProcessor {
             try {
                 config.postInitialise(this.extensions);
             } catch (InvalidMixinException ex) {
-                this.handleMixinPrepareError(config, ex, environment);
+                if (!this.handleMixinPrepareError(config, ex, environment)) {
+                    failed.add(config);
+                }
             } catch (Exception ex) {
                 String message = ex.getMessage();
                 MixinProcessor.logger.error("Error encountered during mixin config postInit step '" + config.getName() + "' from mod '" + CleanroomUtil.getModId(config) + "': " + message, ex);
             }
         }
+        batch.removeAll(failed);
 
         this.configs.addAll(batch);
         Collections.sort(this.configs);
@@ -632,8 +642,15 @@ public class MixinProcessor {
         return totalMixins;
     }
 
-    private void handleMixinPrepareError(MixinConfig config, InvalidMixinException ex, MixinEnvironment environment) throws MixinPrepareError {
-        this.handleMixinError(config.getName(), ex, environment, ErrorPhase.PREPARE);
+    private boolean handleMixinPrepareError(MixinConfig config, InvalidMixinException ex, MixinEnvironment environment) {
+        try {
+            this.handleMixinError(config.getName(), ex, environment, ErrorPhase.PREPARE);
+            return true;
+        } catch (MixinError | InvalidMixinException er) {
+            MixinProcessor.logger.error("Mixin config {} from mod {} failed to prepare, the config's mixins will not be applied",
+                    config, CleanroomUtil.getModId(config));
+            return false;
+        }
     }
     
     private void handleMixinApplyError(String targetClass, InvalidMixinException ex, MixinEnvironment environment) throws MixinApplyError {
