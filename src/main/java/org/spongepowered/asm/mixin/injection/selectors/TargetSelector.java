@@ -46,6 +46,7 @@ import org.objectweb.asm.tree.AnnotationNode;
 import org.spongepowered.asm.mixin.injection.selectors.ITargetSelectorDynamic.SelectorAnnotation;
 import org.spongepowered.asm.mixin.injection.selectors.ITargetSelectorDynamic.SelectorId;
 import org.spongepowered.asm.mixin.injection.selectors.dynamic.DynamicSelectorDesc;
+import org.spongepowered.asm.mixin.injection.selectors.dynamic.DynamicSelectorMerged;
 import org.spongepowered.asm.mixin.injection.selectors.throwables.SelectorConstraintException;
 import org.spongepowered.asm.mixin.injection.struct.MemberInfo;
 import org.spongepowered.asm.mixin.throwables.MixinError;
@@ -200,6 +201,7 @@ public final class TargetSelector {
     
     static {
         TargetSelector.registerBuiltIn(DynamicSelectorDesc.class);
+        TargetSelector.registerBuiltIn(DynamicSelectorMerged.class);
     }
     
     private TargetSelector() {

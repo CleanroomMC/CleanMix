@@ -49,6 +49,7 @@ import org.spongepowered.asm.mixin.MixinEnvironment.Feature;
 import org.spongepowered.asm.mixin.MixinEnvironment.Option;
 import org.spongepowered.asm.mixin.MixinEnvironment.Phase;
 import org.spongepowered.asm.mixin.Overwrite;
+import org.spongepowered.asm.mixin.edit.MixinEdits;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfig;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigSource;
@@ -949,7 +950,7 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
         for (String mixinClass : mixinClasses) {
             String fqMixinClass = this.mixinPackage + mixinClass;
             
-            if (mixinClass == null || MixinConfig.globalMixinList.contains(fqMixinClass)) {
+            if (mixinClass == null || MixinConfig.globalMixinList.contains(fqMixinClass) || !MixinEdits.shouldLoad(fqMixinClass)) {
                 continue;
             }
             

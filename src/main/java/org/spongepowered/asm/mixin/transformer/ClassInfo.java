@@ -1030,6 +1030,13 @@ public final class ClassInfo {
     }
     
     /**
+     * Get the mixin this class declares, or null when it is not a mixin
+     */
+    public IMixinInfo getMixinInfo() {
+        return this.mixin;
+    }
+
+    /**
      * Get whether this class is loadable mixin
      */
     public boolean isLoadable() {

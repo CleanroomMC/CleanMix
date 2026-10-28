@@ -50,6 +50,7 @@ import org.spongepowered.asm.mixin.*;
 import org.spongepowered.asm.mixin.MixinEnvironment.CompatibilityLevel;
 import org.spongepowered.asm.mixin.MixinEnvironment.Option;
 import org.spongepowered.asm.mixin.MixinEnvironment.Phase;
+import org.spongepowered.asm.mixin.edit.MixinEdits;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfig;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 import org.spongepowered.asm.mixin.injection.Surrogate;
@@ -302,6 +303,7 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
         MixinClassNode createClassNode(int flags) {
             MixinClassNode mixinClassNode = new MixinClassNode(MixinInfo.this);
             this.classNode.accept(mixinClassNode);
+            MixinEdits.edit(MixinInfo.this.className, mixinClassNode);
             return mixinClassNode;
         }
 
@@ -1086,7 +1088,7 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
      */
     public boolean shouldApplyMixin(String targetName) {
         Section pluginTimer = this.profiler.begin("plugin");
-        boolean result = this.ignorePlugin || this.plugin.shouldApplyMixin(targetName, this.className);
+        boolean result = (this.ignorePlugin || this.plugin.shouldApplyMixin(targetName, this.className)) && MixinEdits.shouldApply(this.className, targetName);
         pluginTimer.end();
         return result;
     }
