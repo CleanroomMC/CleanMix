@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 
 import org.objectweb.asm.Handle;
 import org.objectweb.asm.Opcodes;
@@ -168,16 +169,6 @@ public abstract class ElementNode<TNode> {
             return this.method;
         }
         
-        @Override
-        public boolean equals(Object obj) {
-            return this.method.equals(obj);
-        }
-        
-        @Override
-        public int hashCode() {
-            return this.method.hashCode();
-        }
-        
     }
     
     /**
@@ -233,16 +224,6 @@ public abstract class ElementNode<TNode> {
         public FieldNode get() {
             return this.field;
         }
-        
-        @Override
-        public boolean equals(Object obj) {
-            return this.field.equals(obj);
-        }
-        
-        @Override
-        public int hashCode() {
-            return this.field.hashCode();
-        }
 
     }
     
@@ -291,45 +272,27 @@ public abstract class ElementNode<TNode> {
         public MethodInsnNode get() {
             return this.insn;
         }
-        
-        @Override
-        public boolean equals(Object obj) {
-            return this.insn.equals(obj);
-        }
-        
-        @Override
-        public int hashCode() {
-            return this.insn.hashCode();
-        }
 
     }
     
     /**
-     * ElementNode for InvokeDynamicInsnNode
+     * ElementNode for SAM instantiations using INVOKEDYNAMIC
      */
-    static class ElementNodeInvokeDynamicInsn extends ElementNode<InvokeDynamicInsnNode> {
+    static class ElementNodeLmfInsn extends ElementNode<InvokeDynamicInsnNode> {
         
-        private InvokeDynamicInsnNode insn;
+        private final InvokeDynamicInsnNode insn;
         
-        private Type samMethodType;
+        private final Type samMethodType;
         
-        private Handle implMethod;
+        private final Handle implMethod;
         
-        private Type instantiatedMethodType;
+        private final Type instantiatedMethodType;
         
-        ElementNodeInvokeDynamicInsn(InvokeDynamicInsnNode invokeDynamic) {
+        ElementNodeLmfInsn(InvokeDynamicInsnNode invokeDynamic) {
             this.insn = invokeDynamic;
-            
-            if (invokeDynamic.bsmArgs != null && invokeDynamic.bsmArgs.length > 1) {
-                Object samMethodType = invokeDynamic.bsmArgs[0];
-                Object implMethod = invokeDynamic.bsmArgs[1];
-                Object instantiatedMethodType = invokeDynamic.bsmArgs[2];
-                if (samMethodType instanceof Type && implMethod instanceof Handle && instantiatedMethodType instanceof Type) {
-                    this.samMethodType = (Type)samMethodType;
-                    this.implMethod = (Handle)implMethod;
-                    this.instantiatedMethodType = (Type)instantiatedMethodType;
-                }
-            }
+            this.samMethodType = (Type) invokeDynamic.bsmArgs[0];
+            this.implMethod = (Handle) invokeDynamic.bsmArgs[1];
+            this.instantiatedMethodType = (Type) invokeDynamic.bsmArgs[2];
         }
         
         @Override
@@ -339,7 +302,7 @@ public abstract class ElementNode<TNode> {
         
         @Override
         public boolean isField() {
-            return this.implMethod != null && Handles.isField(this.implMethod);
+            return Handles.isField(this.implMethod);
         }
         
         @Override
@@ -349,7 +312,12 @@ public abstract class ElementNode<TNode> {
         
         @Override
         public String getOwner() {
-            return this.implMethod != null ? this.implMethod.getOwner() : this.insn.name;
+            return Type.getReturnType(this.insn.desc).getInternalName();
+        }
+
+        @Override
+        public String getImplOwner() {
+            return this.implMethod.getOwner();
         }
 
         @Override
@@ -358,23 +326,18 @@ public abstract class ElementNode<TNode> {
         }
         
         @Override
-        public String getSyntheticName() {
-            return this.implMethod != null ? this.implMethod.getName() : this.insn.name;
+        public String getImplName() {
+            return this.implMethod.getName();
         }
         
         @Override
         public String getDesc() {
-            return this.implMethod != null ? this.implMethod.getDesc() : this.insn.desc;
-        }
-        
-        @Override
-        public String getDelegateDesc() {
-            return this.samMethodType != null ? this.samMethodType.getDescriptor() : this.getDesc();
+            return this.instantiatedMethodType.getDescriptor();
         }
         
         @Override
         public String getImplDesc() {
-            return this.instantiatedMethodType != null ? this.instantiatedMethodType.getDescriptor() : this.getDesc();
+            return this.implMethod.getDesc();
         }
         
         @Override
@@ -386,17 +349,13 @@ public abstract class ElementNode<TNode> {
         public InvokeDynamicInsnNode get() {
             return this.insn;
         }
-        
-        @Override
-        public boolean equals(Object obj) {
-            return this.insn.equals(obj);
-        }
-        
-        @Override
-        public int hashCode() {
-            return this.insn.hashCode();
-        }
 
+        static ElementNodeLmfInsn of(InvokeDynamicInsnNode insn) {
+            if (!insn.bsm.equals(Handles.LMF_HANDLE) && !insn.bsm.equals(Handles.ALT_LMF_HANDLE)) {
+                return null;
+            }
+            return new ElementNodeLmfInsn(insn);
+        }
     }
     
     /**
@@ -449,16 +408,6 @@ public abstract class ElementNode<TNode> {
         public FieldInsnNode get() {
             return this.insn;
         }
-        
-        @Override
-        public boolean equals(Object obj) {
-            return this.insn.equals(obj);
-        }
-        
-        @Override
-        public int hashCode() {
-            return this.insn.hashCode();
-        }
 
     }
     
@@ -469,11 +418,11 @@ public abstract class ElementNode<TNode> {
         
         private final Iterator<AbstractInsnNode> iter;
         
-        private final boolean filterDynamic;
+        private final boolean filterLmf;
         
-        ElementNodeIterator(Iterator<AbstractInsnNode> iter, boolean filterDynamic) {
+        ElementNodeIterator(Iterator<AbstractInsnNode> iter, boolean filterLmf) {
             this.iter = iter;
-            this.filterDynamic = filterDynamic;
+            this.filterLmf = filterLmf;
         }
 
         @Override
@@ -484,7 +433,7 @@ public abstract class ElementNode<TNode> {
         @Override
         public ElementNode<AbstractInsnNode> next() {
             AbstractInsnNode elem = this.iter.next();
-            return !this.filterDynamic || (elem != null && elem.getOpcode() == Opcodes.INVOKEDYNAMIC) ? ElementNode.of(elem) : null;
+            return !this.filterLmf || (elem != null && elem.getOpcode() == Opcodes.INVOKEDYNAMIC) ? ElementNode.of(elem) : null;
         }
         
     }
@@ -496,21 +445,21 @@ public abstract class ElementNode<TNode> {
         
         private final Iterable<AbstractInsnNode> iterable;
 
-        private final boolean filterDynamic;
+        private final boolean filterLmf;
         
-        public ElementNodeIterable(Iterable<AbstractInsnNode> iterable, boolean filterDynamic) {
+        public ElementNodeIterable(Iterable<AbstractInsnNode> iterable, boolean filterLmf) {
             this.iterable = iterable;
-            this.filterDynamic = filterDynamic;
+            this.filterLmf = filterLmf;
         }
 
-        public ElementNodeIterable(InsnList insns, boolean filterDynamic) {
+        public ElementNodeIterable(InsnList insns, boolean filterLmf) {
             this.iterable = ASM.isAtLeastVersion(7, 2) ? insns : Arrays.asList(insns.toArray());
-            this.filterDynamic = filterDynamic;
+            this.filterLmf = filterLmf;
         }
 
         @Override
         public Iterator<ElementNode<AbstractInsnNode>> iterator() {
-            return new ElementNodeIterator(this.iterable.iterator(), this.filterDynamic);
+            return new ElementNodeIterator(this.iterable.iterator(), this.filterLmf);
         }
         
     }
@@ -556,9 +505,17 @@ public abstract class ElementNode<TNode> {
     
     /**
      * Get the element owner's name, if this element has an owner, otherwise
-     * returns <tt>null</tt>
+     * returns <tt>null</tt>. For LMF elements this is the SAM type
+     * being implemented.
      */
     public abstract String getOwner();
+
+    /**
+     * For LMF elements, returns the owner of the implementing method.
+     */
+    public String getImplOwner() {
+        return this.getOwner();
+    }
     
     /**
      * Get the element name
@@ -566,30 +523,21 @@ public abstract class ElementNode<TNode> {
     public abstract String getName();
     
     /**
-     * Get the synthetic element name. For INVOKEDYNAMIC elements this is the
-     * real name of the lambda method implementing the delegate.
+     * For LMF elements, returns the real name of the implementing method.
      */
-    public String getSyntheticName() {
+    public String getImplName() {
         return this.getName();
     }
     
     /**
-     * Get the element descriptor. For INVOKEDYNAMIC this is the full descriptor
-     * of the lambda (including prepended captures).
+     * Get the element descriptor. For LMF elements this is the specialised
+     * descriptor of the SAM.
      */
     public abstract String getDesc();
     
     /**
-     * For INVOKEDYNAMIC elements, returns original descriptor of the delegate. 
-     */
-    public String getDelegateDesc() {
-        return this.getDesc();
-    }
-    
-    /**
-     * For INVOKEDYNAMIC elements, returns specialised descriptor of the
-     * delegate (lambda descriptor without prepended captures), can be the same
-     * as the delegate descriptor or more specialised. 
+     * For LMF elements, returns the full descriptor of the implementing
+     * method (including any leading parameters bound to it).
      */
     public String getImplDesc() {
         return this.getDesc();
@@ -616,6 +564,16 @@ public abstract class ElementNode<TNode> {
             owner = "L" + owner + ";";
         }
         return String.format("%s%s%s", owner, Strings.nullToEmpty(this.getName()), desc);
+    }
+
+    @Override
+    public final boolean equals(Object obj) {
+        return this.getClass() == obj.getClass() && Objects.equals(this.get(), ((ElementNode<?>) obj).get());
+    }
+
+    @Override
+    public final int hashCode() {
+        return Objects.hashCode(this.get());
     }
 
     /**
@@ -661,7 +619,7 @@ public abstract class ElementNode<TNode> {
         } else if (node instanceof MethodInsnNode) {
             return (ElementNode<TNode>)new ElementNodeMethodInsn((MethodInsnNode)node);
         } else if (node instanceof InvokeDynamicInsnNode) {
-            return (ElementNode<TNode>)new ElementNodeInvokeDynamicInsn((InvokeDynamicInsnNode)node);
+            return (ElementNode<TNode>) ElementNodeLmfInsn.of((InvokeDynamicInsnNode)node);
         } else if (node instanceof FieldInsnNode) {
             return (ElementNode<TNode>)new ElementNodeFieldInsn((FieldInsnNode)node);
         }
@@ -682,7 +640,7 @@ public abstract class ElementNode<TNode> {
         if (node instanceof MethodInsnNode) {
             return (ElementNode<TNode>)new ElementNodeMethodInsn((MethodInsnNode)node);
         } else if (node instanceof InvokeDynamicInsnNode) {
-            return (ElementNode<TNode>)new ElementNodeInvokeDynamicInsn((InvokeDynamicInsnNode)node);
+            return (ElementNode<TNode>) ElementNodeLmfInsn.of((InvokeDynamicInsnNode)node);
         } else if (node instanceof FieldInsnNode) {
             return (ElementNode<TNode>)new ElementNodeFieldInsn((FieldInsnNode)node);
         }
@@ -749,12 +707,12 @@ public abstract class ElementNode<TNode> {
     
     /**
      * Get a wrapped version of the supplied insn list which returns element
-     * nodes for every INVOKEDYNAMIC instruction only
+     * nodes for every LMF instruction only
      * 
      * @param insns Insn list to wrap
      * @return Wrapper for insn list
      */
-    public static Iterable<ElementNode<AbstractInsnNode>> dynamicInsnList(InsnList insns) {
+    public static Iterable<ElementNode<AbstractInsnNode>> lmfInsnList(InsnList insns) {
         return new ElementNodeIterable(insns, true);
     }
     

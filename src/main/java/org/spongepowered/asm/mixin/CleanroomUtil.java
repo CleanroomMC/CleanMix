@@ -74,11 +74,14 @@ public final class CleanroomUtil {
     /** CleanMix compatibility version 0.6.0. */
     public static final int COMPATIBILITY_0_6_0 = 6000;
 
+    /** CleanMix compatibility version 0.8.0. */
+    public static final int COMPATIBILITY_0_8_0 = 8000;
+
     /** Fallback for mixins built without CleanMix compatibility metadata. */
     public static final int COMPATIBILITY_OLD = COMPATIBILITY_0_1_0;
 
     /** Latest CleanMix compatibility version. */
-    public static final int COMPATIBILITY_LATEST = COMPATIBILITY_0_6_0;
+    public static final int COMPATIBILITY_LATEST = COMPATIBILITY_0_8_0;
 
     private static final Map<String, Integer> EMPTY_COMPATIBILITIES = Collections.<String, Integer>emptyMap();
     private static final Map<String, Map<String, Integer>> COMPATIBILITIES_CACHE = new HashMap<String, Map<String, Integer>>();
@@ -161,23 +164,28 @@ public final class CleanroomUtil {
     }
 
     public static int getCompatibility(ISelectorContext context) {
-        return getCompatibility(context.getMixin().getMixin(), context.getMethod());
+        return getCompatibility(context.getMixin(), context.getMethod());
     }
 
     public static int getCompatibility(IMixinContext context) {
-        return getCompatibility(context.getMixin(), null);
+        return getCompatibility(context, (Object) null);
     }
 
     public static int getCompatibility(IMixinContext context, MethodNode method) {
-        return getCompatibility(context.getMixin(), method);
+        return getCompatibility(context, (Object) method);
     }
 
     public static int getCompatibility(IMixinContext context, FieldNode field) {
-        return getCompatibility(context.getMixin(), field);
+        return getCompatibility(context, (Object) field);
     }
 
     public static int getCompatibility(IMixinInfo mixin) {
         return getCompatibility(mixin, null);
+    }
+
+    // The annotation processor has no mixin info, and always builds against the latest behaviour
+    private static int getCompatibility(IMixinContext context, Object member) {
+        return context.isCompileTime() ? COMPATIBILITY_LATEST : getCompatibility(context.getMixin(), member);
     }
 
     private static int getCompatibility(IMixinInfo mixin, Object member) {

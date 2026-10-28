@@ -1130,7 +1130,7 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
     }
 
     private void handleTargetError(String message, boolean verboseOnly) {
-        if (this.strict) {
+        if (this.strict || (CleanroomUtil.getCompatibility(this) >= CleanroomUtil.COMPATIBILITY_0_8_0 && this.parent.isRequired())) {
             this.logger.error(message);
             throw new InvalidMixinException(this, message);
         }
