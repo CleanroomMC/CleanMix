@@ -411,6 +411,12 @@ class AnnotatedMixin implements IMixinContext, IAnnotatedElement {
             this.registerInjectionPoint(method, inject, "at", (AnnotationHandle)at, remap, "@At(%s)");
         }
 
+        for (String key : new String[] { "loop", "to" }) {
+            for (IAnnotationHandle selector : inject.getAnnotationList(key)) {
+                this.registerInjectionPoint(method, inject, key, (AnnotationHandle)selector, remap, "@At(%s)");
+            }
+        }
+
         List<IAnnotationHandle> slices = inject.getAnnotationList("slice");
         for (IAnnotationHandle slice : slices) {
             String id = slice.<String>getValue("id", "");
