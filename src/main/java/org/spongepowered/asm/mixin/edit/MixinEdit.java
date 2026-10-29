@@ -34,6 +34,7 @@ import java.util.function.Consumer;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.MethodNode;
+import org.spongepowered.asm.mixin.MixinEnvironment;
 import org.spongepowered.asm.service.MixinService;
 
 /**
@@ -84,7 +85,8 @@ public final class MixinEdit implements IMixinEditor {
 
     /**
      * Edit methods of the mixin. Without a descriptor every overload of the
-     * name is edited.
+     * name is edited. A method also matches by the name the environment maps
+     * this one to, so the SRG name of an overwrite finds it in development too.
      *
      * @param method method name as written in the mixin, optionally followed
      *      by its descriptor, such as {@code onTick(I)V}
@@ -96,10 +98,11 @@ public final class MixinEdit implements IMixinEditor {
         String name = descStart < 0 ? method : method.substring(0, descStart);
         String desc = descStart < 0 ? null : method.substring(descStart);
         return this.edit(classNode -> {
+            String mapped = MixinEnvironment.getDefaultEnvironment().getRemappers().mapMethodName(null, name, desc);
             boolean found = false;
             for (Iterator<MethodNode> iter = classNode.methods.iterator(); iter.hasNext();) {
                 MethodNode node = iter.next();
-                if (node.name.equals(name) && (desc == null || node.desc.equals(desc))) {
+                if ((node.name.equals(name) || node.name.equals(mapped)) && (desc == null || node.desc.equals(desc))) {
                     found = true;
                     MethodEdit methodEdit = new MethodEdit(node);
                     edit.accept(methodEdit);
@@ -113,7 +116,8 @@ public final class MixinEdit implements IMixinEditor {
     }
 
     /**
-     * Edit a field of the mixin
+     * Edit a field of the mixin. A field also matches by the name the
+     * environment maps this one to, like {@link #method}.
      *
      * @param field field name, optionally followed by its descriptor, such as
      *      {@code count:I}
@@ -125,10 +129,11 @@ public final class MixinEdit implements IMixinEditor {
         String name = descStart < 0 ? field : field.substring(0, descStart);
         String desc = descStart < 0 ? null : field.substring(descStart + 1);
         return this.edit(classNode -> {
+            String mapped = MixinEnvironment.getDefaultEnvironment().getRemappers().mapFieldName(null, name, desc);
             boolean found = false;
             for (Iterator<FieldNode> iter = classNode.fields.iterator(); iter.hasNext();) {
                 FieldNode node = iter.next();
-                if (node.name.equals(name) && (desc == null || node.desc.equals(desc))) {
+                if ((node.name.equals(name) || node.name.equals(mapped)) && (desc == null || node.desc.equals(desc))) {
                     found = true;
                     FieldEdit fieldEdit = new FieldEdit(node);
                     edit.accept(fieldEdit);

@@ -33,6 +33,7 @@ import org.spongepowered.asm.mixin.injection.selectors.ITargetSelectorDynamic;
 import org.spongepowered.asm.mixin.injection.selectors.ITargetSelectorDynamic.SelectorId;
 import org.spongepowered.asm.mixin.injection.selectors.InvalidSelectorException;
 import org.spongepowered.asm.mixin.injection.selectors.MatchResult;
+import org.spongepowered.asm.mixin.injection.struct.MemberInfo;
 import org.spongepowered.asm.mixin.transformer.meta.MixinMerged;
 import org.spongepowered.asm.util.Annotations;
 import org.spongepowered.asm.util.asm.MethodNodeEx;
@@ -49,20 +50,27 @@ import org.spongepowered.asm.util.asm.MethodNodeEx;
  * {@code @Merged(com.example.mixin.FooMixin::onTick(Lorg/spongepowered/asm/mixin/injection/callback/CallbackInfo;)V)}.
  * Nothing is selected when the other mixin is absent, so the injector's
  * {@code require} decides whether that is an error.</p>
+ *
+ * <p>The name is remapped like any other target, and a method matches by the
+ * name as written or as remapped. A handler keeps its name, and an overwrite
+ * of an obfuscated method is found by its mapped name.</p>
  */
 @SelectorId("Merged")
 public final class DynamicSelectorMerged implements ITargetSelectorDynamic {
 
     private final String mixin;
 
-    private final String name;
+    private final String member;
 
-    private final String desc;
+    private final MemberInfo method;
 
-    private DynamicSelectorMerged(String mixin, String name, String desc) {
+    private final MemberInfo remapped;
+
+    private DynamicSelectorMerged(String mixin, String member, MemberInfo method, MemberInfo remapped) {
         this.mixin = mixin;
-        this.name = name;
-        this.desc = desc;
+        this.member = member;
+        this.method = method;
+        this.remapped = remapped;
     }
 
     public static DynamicSelectorMerged parse(String input, ISelectorContext context) throws InvalidSelectorException {
@@ -70,13 +78,18 @@ public final class DynamicSelectorMerged implements ITargetSelectorDynamic {
         if (separator < 1 || separator + 2 == input.length()) {
             throw new InvalidSelectorException("Expected @Merged(mixin::method) but found @Merged(" + input + ") in " + context);
         }
-        String mixin = input.substring(0, separator).replace('/', '.');
-        String member = context.remap(input.substring(separator + 2));
-        int descStart = member.indexOf('(');
-        if (descStart < 0) {
-            return new DynamicSelectorMerged(mixin, member, null);
-        }
-        return new DynamicSelectorMerged(mixin, member.substring(0, descStart), member.substring(descStart));
+        String member = input.substring(separator + 2);
+        return new DynamicSelectorMerged(input.substring(0, separator).replace('/', '.'), member, MemberInfo.parse(member, null),
+                MemberInfo.parse(context.remap(member), null));
+    }
+
+    /**
+     * Get the method as written, without the mixin, such as {@code onTick}
+     *
+     * @return the method
+     */
+    public String getMember() {
+        return this.member;
     }
 
     @Override
@@ -115,19 +128,21 @@ public final class DynamicSelectorMerged implements ITargetSelectorDynamic {
     @Override
     public <TNode> MatchResult match(ElementNode<TNode> node) {
         MethodNode method = node.getMethod();
-        if (!(method instanceof MethodNodeEx) || this.desc != null && !this.desc.equals(method.desc)) {
+        if (!(method instanceof MethodNodeEx)) {
             return MatchResult.NONE;
         }
         AnnotationNode merged = Annotations.getVisible(method, MixinMerged.class);
         if (merged == null || !this.mixin.equals(Annotations.<String>getValue(merged, "mixin"))) {
             return MatchResult.NONE;
         }
-        return this.name.equals(((MethodNodeEx) method).getOriginalName()) ? MatchResult.EXACT_MATCH : MatchResult.NONE;
+        String name = ((MethodNodeEx) method).getOriginalName();
+        return this.method.matches(null, name, method.desc).isExactMatch() || this.remapped.matches(null, name, method.desc).isExactMatch()
+                ? MatchResult.EXACT_MATCH : MatchResult.NONE;
     }
 
     @Override
     public String toString() {
-        return "@Merged(" + this.mixin + "::" + this.name + (this.desc != null ? this.desc : "") + ")";
+        return "@Merged(" + this.mixin + "::" + this.member + ")";
     }
 
 }

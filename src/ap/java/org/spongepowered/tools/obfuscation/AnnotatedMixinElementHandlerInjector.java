@@ -43,6 +43,7 @@ import org.spongepowered.asm.mixin.injection.selectors.ITargetSelectorConstructo
 import org.spongepowered.asm.mixin.injection.selectors.ITargetSelectorRemappable;
 import org.spongepowered.asm.mixin.injection.selectors.InvalidSelectorException;
 import org.spongepowered.asm.mixin.injection.selectors.TargetSelector;
+import org.spongepowered.asm.mixin.injection.selectors.dynamic.DynamicSelectorMerged;
 import org.spongepowered.asm.mixin.injection.struct.InjectionPointData;
 import org.spongepowered.asm.mixin.injection.struct.MemberInfo;
 import org.spongepowered.asm.mixin.refmap.IMixinContext;
@@ -203,6 +204,24 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
             targetSelector.validateNext();
         } catch (InvalidSelectorException ex) {
             elem.printMessage(this.ap, MessageType.TARGET_SELECTOR_VALIDATION, ex.getMessage());
+        }
+
+        if (targetSelector instanceof DynamicSelectorMerged) {
+            if (!elem.shouldRemap()) {
+                return;
+            }
+
+            // Map the name only when every target has it as an obfuscated method
+            String member = ((DynamicSelectorMerged) targetSelector).getMember();
+            MemberInfo method = MemberInfo.parse(member, null);
+            for (TypeHandle target : this.mixin.getTargets()) {
+                String desc = target.isImaginary() || target.isSimulated() ? null : target.findDescriptor(method);
+                if (desc == null || this.obf.getDataProvider().getObfMethod(target.getMappingMethod(method.getName(), desc)).isEmpty()) {
+                    return;
+                }
+            }
+            this.registerInjector(elem, member, method);
+            return;
         }
 
         if (!(targetSelector instanceof ITargetSelectorByName)) {
