@@ -766,6 +766,8 @@ public final class ClassInfo {
      */
     private final Map<ClassInfo, ClassInfo> correspondingTypes = new HashMap<ClassInfo, ClassInfo>();
 
+    private int referencesGeneration;
+
     /**
      * Mixin info if this class is a mixin itself
      */
@@ -1213,6 +1215,7 @@ public final class ClassInfo {
      * resolved
      */
     public ClassInfo getSuperClass() {
+        this.refreshReferences();
         if (this.superClass == null && this.superName != null) {
             this.superClass = ClassInfo.forName(this.superName);
         }
@@ -1232,6 +1235,7 @@ public final class ClassInfo {
      * resolved or if this is not an inner class
      */
     public ClassInfo getOuterClass() {
+        this.refreshReferences();
         if (this.outerClass == null && this.outerName != null) {
             this.outerClass = ClassInfo.forName(this.outerName);
         }
@@ -1591,6 +1595,7 @@ public final class ClassInfo {
      *      no corresponding mixin was found
      */
     ClassInfo findCorrespondingType(ClassInfo mixin) {
+        this.refreshReferences();
         if (mixin == null || !mixin.isMixin || this.isMixin) {
             return null;
         }
@@ -2115,32 +2120,18 @@ public final class ClassInfo {
             ClassInfo.logger.debug("Replacing placeholder class metadata for mixin {}", classNode.name);
             info = new ClassInfo(classNode);
             ClassInfo.cache.put(classNode.name, info);
-            ClassInfo.invalidateReferences(info, classNode.name);
             ClassInfo.mixinUpgrades.incrementAndGet();
         }
         return info;
     }
 
-    /**
-     * Drop every lazily resolved reference to the stale ClassInfo previously
-     * cached for the supplied name, so that consumers holding the owning
-     * ClassInfo resolve the replacement on next use
-     *
-     * @param replacement the ClassInfo which is now cached for the name
-     * @param name name of the class whose metadata was replaced
-     */
-    private static void invalidateReferences(ClassInfo replacement, String name) {
-        for (ClassInfo info : ClassInfo.cache.values()) {
-            if (info == null || info == replacement) {
-                continue;
-            }
-            if (info.superClass != null && name.equals(info.superClass.name)) {
-                info.superClass = null;
-            }
-            if (info.outerClass != null && name.equals(info.outerClass.name)) {
-                info.outerClass = null;
-            }
-            info.correspondingTypes.clear();
+    private void refreshReferences() {
+        int generation = ClassInfo.getMixinUpgrades();
+        if (this.referencesGeneration != generation) {
+            this.superClass = null;
+            this.outerClass = null;
+            this.correspondingTypes.clear();
+            this.referencesGeneration = generation;
         }
     }
 
