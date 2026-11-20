@@ -211,16 +211,47 @@ class AnnotatedMixinElementHandlerInjector extends AnnotatedMixinElementHandler 
                 return;
             }
 
-            // Map the name only when every target has it as an obfuscated method
+            // Map the name from the targets that have it as an obfuscated method, when they agree on one mapping
             String member = ((DynamicSelectorMerged) targetSelector).getMember();
             MemberInfo method = MemberInfo.parse(member, null);
+            ObfuscationData<Set<String>> mappings = new ObfuscationData<>();
+            for (ObfuscationEnvironment env : this.obf.getEnvironments()) {
+                mappings.put(env.getType(), new HashSet<>());
+            }
             for (TypeHandle target : this.mixin.getTargets()) {
                 String desc = target.isImaginary() || target.isSimulated() ? null : target.findDescriptor(method);
-                if (desc == null || this.obf.getDataProvider().getObfMethod(target.getMappingMethod(method.getName(), desc)).isEmpty()) {
-                    return;
+                if (desc == null) {
+                    continue;
+                }
+                ObfuscationData<MappingMethod> obfData = this.obf.getDataProvider().getObfMethod(target.getMappingMethod(method.getName(), desc));
+                if (obfData.isEmpty()) {
+                    continue;
+                }
+                for (ObfuscationEnvironment env : this.obf.getEnvironments()) {
+                    MappingMethod mapping = obfData.get(env.getType());
+                    String owner = this.mixin.isMultiTarget() || mapping.getOwner() == null ? "" : 'L' + mapping.getOwner() + ';';
+                    mappings.get(env.getType()).add(owner + mapping.getSimpleName() + mapping.getDesc());
                 }
             }
-            this.registerInjector(elem, member, method);
+            ObfuscationData<String> remapped = new ObfuscationData<>();
+            for (ObfuscationEnvironment env : this.obf.getEnvironments()) {
+                Set<String> names = mappings.get(env.getType());
+                if (names.size() == 1) {
+                    remapped.put(env.getType(), names.iterator().next());
+                } else if (names.size() > 1) {
+                    elem.printMessage(this.ap, MessageType.INJECTOR_MAPPING_CONFLICT, "Multi-target reference conflict for " + elem + " target "
+                            + targetSelector + ": " + names);
+                }
+            }
+            if (remapped.isEmpty()) {
+                return;
+            }
+            try {
+                this.obf.getReferenceManager().addMapping(this.classRef, member, remapped);
+            } catch (ReferenceConflictException ex) {
+                elem.printMessage(this.ap, MessageType.INJECTOR_MAPPING_CONFLICT, "Reference conflict for " + elem + " target " + targetSelector
+                        + ": " + member + " -> " + ex.getNew() + " previously defined as " + ex.getOld());
+            }
             return;
         }
 
