@@ -220,7 +220,7 @@ public class Config {
                 throw new MixinInitialisationError("Error initialising parent mixin config " + parent + " of " + configFile, th);
             }
             if (parentConfig == null) {
-                Config.logger.error("Error encountered initialising mixin config {0}: The parent {1} could not be read.", configFile, parent);
+                Config.logger.error("Error encountered initialising mixin config {}: The parent {} could not be read.", configFile, parent);
             }
         }
         
