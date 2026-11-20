@@ -475,7 +475,7 @@ public class MixinProcessor {
         return targets;
     }
 
-    public void refresh() {
+    public synchronized void refresh() {
         this.service.offer(new MixinInternalNote("Refresh"));
         this.prepareNewConfigs(MixinEnvironment.getCurrentEnvironment());
     }
