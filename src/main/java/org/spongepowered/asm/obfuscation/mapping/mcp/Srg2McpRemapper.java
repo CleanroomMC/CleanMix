@@ -58,10 +58,6 @@ public class Srg2McpRemapper implements IRemapper {
      * The loaded mappings, retrieved from {@link #srgs} by filename
      */
     private final Map<String, String> mappings;
-    /**
-     * Cache of transformed descriptor mappings.
-     */
-    private final Map<String, String> descCache = new HashMap<>();
     private static final ILogger logger = MixinService.getService().getLogger("Srg2McpRemapper");
 
     public Srg2McpRemapper(MixinEnvironment env) {
@@ -92,15 +88,7 @@ public class Srg2McpRemapper implements IRemapper {
 
     @Override
     public String mapDesc(String desc) {
-        String remapped = this.descCache.get(desc);
-        if (remapped == null) {
-            remapped = desc;
-            for (Map.Entry<String, String> entry : this.mappings.entrySet()) {
-                remapped = remapped.replace(entry.getKey(), entry.getValue());
-            }
-            this.descCache.put(desc, remapped);
-        }
-        return remapped;
+        return desc;
     }
 
     @Override
@@ -135,7 +123,7 @@ public class Srg2McpRemapper implements IRemapper {
 
                 @Override
                 public boolean processLine(String line) throws IOException {
-                    if (Strings.isNullOrEmpty(line) || line.startsWith("#")) {
+                    if (Strings.isNullOrEmpty(line) || line.startsWith("#") || line.startsWith("\t\t")) {
                         return true;
                     }
                     if (line.startsWith("\t")) {
