@@ -33,6 +33,11 @@ public enum InternSource {
     /**
      * Class, member and descriptor names held by the global ClassInfo cache
      */
-    CLASS_INFO
+    CLASS_INFO,
+
+    /**
+     * Member references and their remapped values read from refmaps
+     */
+    REFERENCE_MAP
 
 }

@@ -30,11 +30,14 @@ import java.io.Reader;
 import java.io.Serializable;
 import java.util.TreeMap;
 import java.util.Map;
+import java.util.function.UnaryOperator;
 
 import javax.tools.Diagnostic.Kind;
 
 import org.spongepowered.asm.service.IMixinService;
 import org.spongepowered.asm.service.MixinService;
+import org.spongepowered.asm.service.clean.ICleanMixinService;
+import org.spongepowered.asm.service.clean.InternSource;
 import org.spongepowered.asm.util.logging.MessageRouter;
 
 import com.google.common.collect.Maps;
@@ -66,6 +69,12 @@ public final class ReferenceMapper implements IReferenceMapper, Serializable {
      * Passthrough mapper, used as failover 
      */
     public static final ReferenceMapper DEFAULT_MAPPER = new ReferenceMapper(true, "invalid");
+
+    /**
+     * Refmaps read by {@link #read(String)} keyed by its resource path.
+     * Configs naming the same refmap share one instance.
+     */
+    private static final Map<String, ReferenceMapper> cache = Maps.newHashMap();
 
     /**
      * "Default" mappings. The set of mappings to use as "default" is specified
@@ -246,12 +255,17 @@ public final class ReferenceMapper implements IReferenceMapper, Serializable {
     }
     
     /**
-     * Read a new refmap from the specified resource
+     * Read a refmap from the specified resource, returning the cached instance
+     * if the resource was read before. Failed reads are not cached.
      * 
      * @param resourcePath Resource to read from
-     * @return new refmap or {@link #DEFAULT_MAPPER} if reading fails
+     * @return refmap or {@link #DEFAULT_MAPPER} if reading fails
      */
-    public static ReferenceMapper read(String resourcePath) {
+    public static synchronized ReferenceMapper read(String resourcePath) {
+        ReferenceMapper cached = ReferenceMapper.cache.get(resourcePath);
+        if (cached != null) {
+            return cached;
+        }
         Reader reader = null;
         try {
             IMixinService service = MixinService.getService();
@@ -260,6 +274,7 @@ public final class ReferenceMapper implements IReferenceMapper, Serializable {
                 reader = new InputStreamReader(resource);
                 ReferenceMapper mapper = ReferenceMapper.readJson(reader);
                 mapper.setResourceName(resourcePath);
+                ReferenceMapper.cache.put(resourcePath, mapper);
                 return mapper;
             }
         } catch (JsonParseException ex) {
@@ -293,7 +308,52 @@ public final class ReferenceMapper implements IReferenceMapper, Serializable {
     }
 
     private static ReferenceMapper readJson(Reader reader) {
-        return new Gson().fromJson(reader, ReferenceMapper.class);
+        ReferenceMapper mapper = new Gson().fromJson(reader, ReferenceMapper.class);
+        mapper.compact();
+        return mapper;
+    }
+
+    /**
+     * The annotation processor writes the default obfuscation context to both
+     * {@link #mappings} and {@link #data}, so equal context maps are pointed at
+     * {@link #mappings} before the remaining maps are interned
+     */
+    private void compact() {
+        for (Map.Entry<String, Map<String, Map<String, String>>> context : this.data.entrySet()) {
+            if (context.getValue().equals(this.mappings)) {
+                context.setValue(this.mappings);
+            }
+        }
+        intern(this.mappings);
+        for (Map<String, Map<String, String>> contextMappings : this.data.values()) {
+            if (contextMappings != this.mappings) {
+                intern(contextMappings);
+            }
+        }
+    }
+
+    private static void intern(Map<String, Map<String, String>> mappings) {
+        UnaryOperator<String> interner = Interning.INTERNER;
+        for (Map.Entry<String, Map<String, String>> classMappings : mappings.entrySet()) {
+            Map<String, String> interned = Maps.newHashMapWithExpectedSize(classMappings.getValue().size());
+            for (Map.Entry<String, String> mapping : classMappings.getValue().entrySet()) {
+                String value = mapping.getValue();
+                interned.put(interner.apply(mapping.getKey()), value != null ? interner.apply(value) : null);
+            }
+            classMappings.setValue(interned);
+        }
+    }
+
+    /**
+     * Resolves the interner on first read, keeping the annotation processor
+     * away from the service
+     */
+    private static final class Interning {
+
+        static final UnaryOperator<String> INTERNER = MixinService.getService() instanceof ICleanMixinService
+                ? ((ICleanMixinService) MixinService.getService()).getStringInterner(InternSource.REFERENCE_MAP)
+                : UnaryOperator.<String>identity();
+
     }
     
 }
