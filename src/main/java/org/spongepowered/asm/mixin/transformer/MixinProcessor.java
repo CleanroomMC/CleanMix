@@ -156,6 +156,8 @@ public class MixinProcessor {
      * All mixin configuration bundles
      */
     private final List<MixinConfig> configs = new ArrayList<MixinConfig>();
+    private final Map<String, List<MixinConfig>> configsByTarget = new HashMap<>();
+    private final Map<String, MixinConfig> configsByPackage = new HashMap<>();
     
     /**
      * Re-entrance detector
@@ -281,7 +283,7 @@ public class MixinProcessor {
         
         try {
             SortedSet<MixinInfo> mixins = new TreeSet<MixinInfo>();
-            for (MixinConfig config : this.configs) {
+            for (MixinConfig config : this.configsByTarget.getOrDefault(name, Collections.emptyList())) {
                 if (config.hasMixinsFor(name)) {
                     // Get and sort mixins for the class
                     // Copied since a mixin failing validation removes itself from the config
@@ -313,17 +315,7 @@ public class MixinProcessor {
                 return transformed;
             }
 
-            MixinConfig packageOwnedByConfig = null;
-            
-            for (MixinConfig config : this.configs) {
-                if (config.packageMatch(name)) {
-                    int packageLen = packageOwnedByConfig != null ? packageOwnedByConfig.getMixinPackage().length() : 0;
-                    if (config.getMixinPackage().length() > packageLen) {
-                        packageOwnedByConfig = config;
-                    }
-                    continue;
-                }
-            }
+            MixinConfig packageOwnedByConfig = this.findPackageConfig(name);
 
             if (packageOwnedByConfig != null) {
                 // AMS - Temp passthrough for injection points and dynamic selectors. Moving to service in 0.9
@@ -402,16 +394,11 @@ public class MixinProcessor {
                 return true;
             }
 
-            for (MixinConfig config : this.configs) {
-                if (config.packageMatch(name)) {
-                    // If the class is in a mixin package, it may be transformed
-                    return true;
-                }
+            if (this.findPackageConfig(name) != null) {
+                return true;
             }
-
-            for (MixinConfig config : this.configs) {
+            for (MixinConfig config : this.configsByTarget.getOrDefault(name, Collections.emptyList())) {
                 if (config.hasMixinsFor(name)) {
-                    // If any config has mixins for the class, it may be transformed
                     return true;
                 }
             }
@@ -422,6 +409,19 @@ public class MixinProcessor {
         }
     }
     
+    private MixinConfig findPackageConfig(String name) {
+        if (this.configsByPackage.isEmpty()) {
+            return null;
+        }
+        for (int end = name.lastIndexOf('.'); end >= 0; end = name.lastIndexOf('.', end - 1)) {
+            MixinConfig config = this.configsByPackage.get(name.substring(0, end + 1));
+            if (config != null) {
+                return config;
+            }
+        }
+        return null;
+    }
+
     private boolean lockAndPrepare(MixinEnvironment environment, String name) {
         boolean locked = this.lock.push().check();
 
@@ -644,8 +644,20 @@ public class MixinProcessor {
         }
         batch.removeAll(failed);
 
-        this.configs.addAll(batch);
-        Collections.sort(this.configs);
+        if (!batch.isEmpty()) {
+            this.configs.addAll(batch);
+            Collections.sort(this.configs);
+            this.configsByTarget.clear();
+            this.configsByPackage.clear();
+            for (MixinConfig config : this.configs) {
+                if (!config.getMixinPackage().isEmpty()) {
+                    this.configsByPackage.putIfAbsent(config.getMixinPackage(), config);
+                }
+                for (String target : config.getTargets()) {
+                    this.configsByTarget.computeIfAbsent(target, key -> new ArrayList<>()).add(config);
+                }
+            }
+        }
 
         return totalMixins;
     }

@@ -26,6 +26,7 @@ package org.spongepowered.asm.obfuscation.mapping.remap;
 
 import org.objectweb.asm.commons.Remapper;
 import org.spongepowered.asm.logging.ILogger;
+import org.spongepowered.asm.logging.Level;
 import org.spongepowered.asm.mixin.extensibility.IRemapper;
 import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.util.ObfuscationUtil;
@@ -42,7 +43,9 @@ public class CleanroomRemapper<T extends Remapper & Unmapper> implements IRemapp
 
     @Override
     public String mapMethodName(String owner, String name, String desc) {
-        logger.debug("Remapping method {}{} for {}", name, desc, owner);
+        if (logger.isEnabled(Level.DEBUG)) {
+            logger.debug("Remapping method {}{} for {}", name, desc, owner);
+        }
         if (owner == null || name == null || desc == null) {
             return name;
         }
@@ -52,13 +55,17 @@ public class CleanroomRemapper<T extends Remapper & Unmapper> implements IRemapp
         }
         String obfOwner = this.unmap(owner);
         String obfDesc = this.unmapDesc(desc);
-        logger.debug("Remapping obfuscated method {}{} for {}", name, obfDesc, obfOwner);
+        if (logger.isEnabled(Level.DEBUG)) {
+            logger.debug("Remapping obfuscated method {}{} for {}", name, obfDesc, obfOwner);
+        }
         return this.remapper.mapMethodName(obfOwner, name, obfDesc);
     }
 
     @Override
     public String mapFieldName(String owner, String name, String desc) {
-        logger.debug("Remapping field {}{} for {}", name, desc, owner);
+        if (logger.isEnabled(Level.DEBUG)) {
+            logger.debug("Remapping field {}{} for {}", name, desc, owner);
+        }
         if (owner == null || name == null || desc == null) {
             return name;
         }
@@ -68,13 +75,17 @@ public class CleanroomRemapper<T extends Remapper & Unmapper> implements IRemapp
         }
         String obfOwner = this.unmap(owner);
         String obfDesc = this.unmapDesc(desc);
-        logger.debug("Remapping obfuscated field {}{} for {}", name, obfDesc, obfOwner);
+        if (logger.isEnabled(Level.DEBUG)) {
+            logger.debug("Remapping obfuscated field {}{} for {}", name, obfDesc, obfOwner);
+        }
         return this.remapper.mapFieldName(obfOwner, name, obfDesc);
     }
 
     @Override
     public String map(String typeName) {
-        logger.debug("Remapping class {}", typeName);
+        if (logger.isEnabled(Level.DEBUG)) {
+            logger.debug("Remapping class {}", typeName);
+        }
         if (typeName == null) {
             return null;
         }

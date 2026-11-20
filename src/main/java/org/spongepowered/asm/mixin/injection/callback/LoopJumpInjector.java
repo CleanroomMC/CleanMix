@@ -83,6 +83,9 @@ public class LoopJumpInjector extends Injector {
 
     private final boolean toNextIteration;
 
+    private Analysis analysis;
+    private boolean needsVerification;
+
     private final Map<String, List<InjectionPoint>> selectors = new HashMap<String, List<InjectionPoint>>();
 
     private final Map<Target, Map<String, InjectionNode>> selected = new HashMap<Target, Map<String, InjectionNode>>();
@@ -131,6 +134,9 @@ public class LoopJumpInjector extends Injector {
 
     @Override
     protected void inject(Target target, InjectionNode node) {
+        if (this.needsVerification) {
+            this.verify(target, true);
+        }
         this.checkTargetForNode(target, node, RestrictTargetLevel.ALLOW_ALL);
         InjectorData handler = new InjectorData(target, "loop handler");
         this.validateParams(handler, Type.BOOLEAN_TYPE);
@@ -174,21 +180,15 @@ public class LoopJumpInjector extends Injector {
                     this.annotationType, target));
         }
 
-        final List<Set<Integer>> successors = new ArrayList<Set<Integer>>();
-        for (int i = 0; i < insns.size(); i++) {
-            successors.add(new HashSet<Integer>());
+        if (this.analysis == null) {
+            try {
+                this.analysis = new Analysis(target, new BasicInterpreter(), true);
+            } catch (AnalyzerException ex) {
+                throw new InvalidInjectionException(this.info, String.format("%s could not analyse %s: %s", this.annotationType, target, ex.getMessage()));
+            }
         }
-        Frame<BasicValue>[] frames;
-        try {
-            frames = new Analyzer<BasicValue>(new BasicInterpreter()) {
-                @Override
-                protected void newControlFlowEdge(int insn, int successor) {
-                    successors.get(insn).add(successor);
-                }
-            }.analyze(target.classNode.name, target.method);
-        } catch (AnalyzerException ex) {
-            throw new InvalidInjectionException(this.info, String.format("%s could not analyse %s: %s", this.annotationType, target, ex.getMessage()));
-        }
+        Frame<BasicValue>[] frames = this.analysis.frames;
+        List<Set<Integer>> successors = this.analysis.successors;
         if (frames[at] == null) {
             throw new InvalidInjectionException(this.info, String.format("%s selected unreachable code in %s", this.annotationType, target));
         }
@@ -272,12 +272,48 @@ public class LoopJumpInjector extends Injector {
             insns.insertBefore(destinationInsn, label);
         }
 
-        // The new edge merges into existing code, so a local the destination reads may now be unassigned on one path
+        this.needsVerification = true;
+    }
+
+    @Override
+    protected void postInject(Target target, InjectionNode node) {
+        if (this.needsVerification) {
+            this.verify(target, false);
+        }
+        this.analysis = null;
+    }
+
+    private void verify(Target target, boolean collectSuccessors) {
         try {
-            new Analyzer<BasicValue>(new BasicVerifier()).analyze(target.classNode.name, target.method);
+            this.analysis = new Analysis(target, new BasicVerifier(), collectSuccessors);
+            this.needsVerification = false;
         } catch (AnalyzerException ex) {
             throw new InvalidInjectionException(this.info, String.format("%s in %s produces unverifiable code, likely a local that is read after the "
                     + "jump but not yet assigned where the handler is called: %s", this.annotationType, target, ex.getMessage()));
+        }
+    }
+
+    private static final class Analysis {
+
+        final List<Set<Integer>> successors;
+        final Frame<BasicValue>[] frames;
+
+        Analysis(Target target, BasicInterpreter interpreter, boolean collectSuccessors) throws AnalyzerException {
+            if (!collectSuccessors) {
+                this.successors = Collections.emptyList();
+                this.frames = new Analyzer<BasicValue>(interpreter).analyze(target.classNode.name, target.method);
+                return;
+            }
+            this.successors = new ArrayList<>(target.insns.size());
+            for (int i = 0; i < target.insns.size(); i++) {
+                this.successors.add(new HashSet<>());
+            }
+            this.frames = new Analyzer<BasicValue>(interpreter) {
+                @Override
+                protected void newControlFlowEdge(int insn, int successor) {
+                    Analysis.this.successors.get(insn).add(successor);
+                }
+            }.analyze(target.classNode.name, target.method);
         }
     }
 

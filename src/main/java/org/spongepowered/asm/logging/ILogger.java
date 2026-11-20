@@ -185,4 +185,8 @@ public interface ILogger {
      */
     public abstract void warn(String message, Throwable t);
 
+    default boolean isEnabled(Level level) {
+        return true;
+    }
+
 }

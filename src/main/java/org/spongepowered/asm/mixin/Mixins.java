@@ -178,19 +178,21 @@ public final class Mixins {
     public static boolean hasReadyConfigs() {
         Set<Config> configs = Mixins.getConfigs();
         MixinEnvironment.Phase phase = MixinEnvironment.getCurrentEnvironment().getPhase();
-        if (configs instanceof PendingConfigs && ((PendingConfigs) configs).blockedPhase == phase) {
+        synchronized (configs) {
+            if (configs instanceof PendingConfigs && ((PendingConfigs) configs).blockedPhase == phase) {
+                return false;
+            }
+            for (Config config : configs) {
+                MixinEnvironment environment = config.getEnvironment();
+                if (environment == null || environment.getPhase().hasReached()) {
+                    return true;
+                }
+            }
+            if (configs instanceof PendingConfigs) {
+                ((PendingConfigs) configs).blockedPhase = phase;
+            }
             return false;
         }
-        for (Config config : configs) {
-            MixinEnvironment environment = config.getEnvironment();
-            if (environment == null || environment.getPhase().hasReached()) {
-                return true;
-            }
-        }
-        if (configs instanceof PendingConfigs) {
-            ((PendingConfigs) configs).blockedPhase = phase;
-        }
-        return false;
     }
 
     private static final class PendingConfigs extends LinkedHashSet<Config> {
@@ -200,7 +202,7 @@ public final class Mixins {
         private MixinEnvironment.Phase blockedPhase;
 
         @Override
-        public boolean add(Config config) {
+        public synchronized boolean add(Config config) {
             if (!super.add(config)) {
                 return false;
             }

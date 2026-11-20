@@ -53,6 +53,11 @@ public class LoggerAdapterLog4j2 extends LoggerAdapterAbstract {
     }
 
     @Override
+    public boolean isEnabled(Level level) {
+        return this.logger.isEnabled(LEVELS[level.ordinal()]);
+    }
+
+    @Override
     public void catching(Level level, Throwable t) {
         this.logger.catching(LoggerAdapterLog4j2.LEVELS[level.ordinal()], t);
     }
