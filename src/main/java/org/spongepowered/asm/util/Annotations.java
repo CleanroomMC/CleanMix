@@ -670,9 +670,16 @@ public final class Annotations {
     }
 
     private static Object packValue(Object value) {
-        Class<? extends Object> type = value.getClass();
-        if (type.isEnum()) {
-            return new String[] { Type.getDescriptor(type), value.toString()};
+        if (value instanceof Enum) {
+            Enum<?> constant = (Enum<?>) value;
+            return new String[] { Type.getDescriptor(constant.getDeclaringClass()), constant.name()};
+        }
+        if (value instanceof List) {
+            List<Object> values = new ArrayList<Object>();
+            for (Object element : (List<?>) value) {
+                values.add(Annotations.packValue(element));
+            }
+            return values;
         }
         return value;
     }
