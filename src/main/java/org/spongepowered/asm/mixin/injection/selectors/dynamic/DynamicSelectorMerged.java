@@ -24,6 +24,8 @@
  */
 package org.spongepowered.asm.mixin.injection.selectors.dynamic;
 
+import java.util.regex.Pattern;
+
 import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.spongepowered.asm.mixin.injection.selectors.ElementNode;
@@ -58,6 +60,8 @@ import org.spongepowered.asm.util.asm.MethodNodeEx;
 @SelectorId("Merged")
 public final class DynamicSelectorMerged implements ITargetSelectorDynamic {
 
+    private static final Pattern MEMBER = Pattern.compile("[^\\s.;/()\\[\\]{}*+:<>-]+(\\([^()\\s>-]*\\)[^()\\s>-]+)?");
+
     private final String mixin;
 
     private final String member;
@@ -79,6 +83,10 @@ public final class DynamicSelectorMerged implements ITargetSelectorDynamic {
             throw new InvalidSelectorException("Expected @Merged(mixin::method) but found @Merged(" + input + ") in " + context);
         }
         String member = input.substring(separator + 2);
+        if (!DynamicSelectorMerged.MEMBER.matcher(member).matches()) {
+            throw new InvalidSelectorException("Expected @Merged(mixin::method) or @Merged(mixin::method(descriptor)) but found @Merged(" + input
+                    + ") in " + context);
+        }
         return new DynamicSelectorMerged(input.substring(0, separator).replace('/', '.'), member, MemberInfo.parse(member, null),
                 MemberInfo.parse(context.remap(member), null));
     }
