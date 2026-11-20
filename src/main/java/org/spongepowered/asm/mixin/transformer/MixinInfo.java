@@ -1016,10 +1016,10 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
             return;
         }
         if (this.pendingState == null) {
-            throw new IllegalStateException("No pending validation state for " + this);
+            throw new InvalidMixinException(this, "Mixin was discarded after failing validation earlier");
         }
-        parseTargets();
         try {
+            this.parseTargets();
             this.pendingState.validate(this.type, this.targetClasses);
             this.state = this.pendingState;
             try {
@@ -1030,6 +1030,12 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
                 this.logger.error(e instanceof InvalidMixinException ? ((InvalidMixinException) e).getMixin() + ": " + e.getMessage() : e.getMessage(), e);
                 this.parent.removeMixin(this);
             }
+        } catch (InvalidMixinException ex) {
+            this.parent.removeMixin(this);
+            throw ex;
+        } catch (RuntimeException ex) {
+            this.parent.removeMixin(this);
+            throw new InvalidMixinException(this, ex);
         } finally {
             this.pendingState = null;
         }

@@ -284,10 +284,15 @@ public class MixinProcessor {
             for (MixinConfig config : this.configs) {
                 if (config.hasMixinsFor(name)) {
                     // Get and sort mixins for the class
-                    for (MixinInfo mixin : config.getMixinsFor(name)) {
+                    // Copied since a mixin failing validation removes itself from the config
+                    for (MixinInfo mixin : new ArrayList<MixinInfo>(config.getMixinsFor(name))) {
                         if (mixin.shouldApplyMixin(name)) {
-                            mixin.validate();
-                            mixins.add(mixin);
+                            try {
+                                mixin.validate();
+                                mixins.add(mixin);
+                            } catch (InvalidMixinException ex) {
+                                this.handleMixinApplyError(name, ex, environment);
+                            }
                         }
                     }
                 }

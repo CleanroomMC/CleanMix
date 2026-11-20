@@ -43,6 +43,7 @@ import org.spongepowered.asm.mixin.transformer.ClassInfo.Method;
 import org.spongepowered.asm.mixin.transformer.MixinInfo.MixinClassNode;
 import org.spongepowered.asm.mixin.transformer.MixinInfo.MixinMethodNode;
 import org.spongepowered.asm.mixin.transformer.meta.MixinProxy;
+import org.spongepowered.asm.mixin.transformer.throwables.InvalidMixinException;
 import org.spongepowered.asm.mixin.transformer.throwables.MixinTransformerError;
 import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.util.Annotations;
@@ -160,7 +161,15 @@ class MixinCoprocessorAccessor extends MixinCoprocessor {
             return null;
         }
 
-        mixin.validate();
+        try {
+            mixin.validate();
+        } catch (InvalidMixinException ex) {
+            if (mixin.isRequired()) {
+                throw ex;
+            }
+            MixinService.getService().getLogger("CleanMix").error("Accessor mixin {} failed validation, its proxies will not be generated", mixin, ex);
+            return null;
+        }
 
         for (ClassInfo targetClass : mixin.getTargets()) {
             if (applicableTargets.contains(targetClass.getClassName())) {
