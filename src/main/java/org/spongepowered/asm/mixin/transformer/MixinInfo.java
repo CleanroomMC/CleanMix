@@ -31,6 +31,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Set;
 
 import org.spongepowered.asm.logging.Level;
@@ -303,7 +304,32 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
         MixinClassNode createClassNode(int flags) {
             MixinClassNode mixinClassNode = new MixinClassNode(MixinInfo.this);
             this.classNode.accept(mixinClassNode);
-            MixinEdits.edit(MixinInfo.this.className, mixinClassNode);
+            if (!MixinEdits.edit(MixinInfo.this.className, mixinClassNode)) {
+                return mixinClassNode;
+            }
+            for (ListIterator<MethodNode> iter = mixinClassNode.methods.listIterator(); iter.hasNext();) {
+                MethodNode method = iter.next();
+                if (!(method instanceof MixinMethodNode)) {
+                    MixinMethodNode mixinMethod = new MixinMethodNode(method.access, method.name, method.desc, method.signature,
+                            method.exceptions != null ? method.exceptions.toArray(new String[0]) : null);
+                    method.accept(mixinMethod);
+                    iter.set(mixinMethod);
+                }
+            }
+
+            // Edits registered after the mixin loaded can add or rename members on later copies
+            if (this.classInfo != null) {
+                for (MethodNode method : mixinClassNode.methods) {
+                    if (this.classInfo.findMethod(method, ClassInfo.INCLUDE_ALL | ClassInfo.INCLUDE_INITIALISERS) == null) {
+                        this.classInfo.addMethod(method);
+                    }
+                }
+                for (FieldNode field : mixinClassNode.fields) {
+                    if (this.classInfo.findField(field.name, field.desc, ClassInfo.INCLUDE_ALL) == null) {
+                        this.classInfo.addField(field);
+                    }
+                }
+            }
             return mixinClassNode;
         }
 

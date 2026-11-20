@@ -992,6 +992,10 @@ public final class ClassInfo {
         this.addMethod(method, true);
     }
 
+    void addField(FieldNode field) {
+        this.fields.add(new Field(field, true));
+    }
+
     private void addMethod(MethodNode method, boolean injected) {
         if (method.name.startsWith("<")) {
             this.initialisers.add(new Method(method, injected));

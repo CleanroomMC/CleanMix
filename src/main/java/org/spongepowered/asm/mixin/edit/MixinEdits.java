@@ -147,11 +147,13 @@ public final class MixinEdits {
      *
      * @param mixinClassName mixin class name
      * @param mixin copy of the mixin class
+     * @return false when no editors are registered, so the copy is unchanged
      */
-    public static void edit(String mixinClassName, ClassNode mixin) {
+    public static boolean edit(String mixinClassName, ClassNode mixin) {
         for (IMixinEditor editor : MixinEdits.editors) {
             editor.edit(mixinClassName, mixin);
         }
+        return !MixinEdits.editors.isEmpty();
     }
 
 }
