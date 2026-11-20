@@ -427,7 +427,7 @@ public class MixinProcessor {
 
         if (!locked) {
             try {
-                this.prepareNewConfigs(environment);
+                this.prepareNewConfigs(environment, false);
             } catch (Exception ex) {
                 this.lock.pop();
                 throw new MixinException(ex);
@@ -478,7 +478,7 @@ public class MixinProcessor {
 
     public synchronized void refresh() {
         this.service.offer(new MixinInternalNote("Refresh"));
-        this.prepareNewConfigs(MixinEnvironment.getCurrentEnvironment());
+        this.prepareNewConfigs(MixinEnvironment.getCurrentEnvironment(), true);
     }
 
     /**
@@ -486,11 +486,11 @@ public class MixinProcessor {
      * Prepare them, and promote them into {@link #configs}.
      * Loops until no new configs appear.
      */
-    private void prepareNewConfigs(MixinEnvironment environment) {
+    private void prepareNewConfigs(MixinEnvironment environment, boolean explicitRefresh) {
         if (this.preparing) {
             return;
         }
-        if (Mixins.getUnvisitedCount() == 0) {
+        if (!explicitRefresh && !Mixins.hasReadyConfigs()) {
             return;
         }
 

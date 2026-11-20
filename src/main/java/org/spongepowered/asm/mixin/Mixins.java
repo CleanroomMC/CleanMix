@@ -169,10 +169,44 @@ public final class Mixins {
     public static Set<Config> getConfigs() {
         Set<Config> mixinConfigs = GlobalProperties.<Set<Config>>get(Mixins.CONFIGS_KEY);
         if (mixinConfigs == null) {
-            mixinConfigs = new LinkedHashSet<Config>();
+            mixinConfigs = new PendingConfigs();
             GlobalProperties.put(Mixins.CONFIGS_KEY, mixinConfigs);
         }
         return mixinConfigs;
+    }
+
+    public static boolean hasReadyConfigs() {
+        Set<Config> configs = Mixins.getConfigs();
+        MixinEnvironment.Phase phase = MixinEnvironment.getCurrentEnvironment().getPhase();
+        if (configs instanceof PendingConfigs && ((PendingConfigs) configs).blockedPhase == phase) {
+            return false;
+        }
+        for (Config config : configs) {
+            MixinEnvironment environment = config.getEnvironment();
+            if (environment == null || environment.getPhase().hasReached()) {
+                return true;
+            }
+        }
+        if (configs instanceof PendingConfigs) {
+            ((PendingConfigs) configs).blockedPhase = phase;
+        }
+        return false;
+    }
+
+    private static final class PendingConfigs extends LinkedHashSet<Config> {
+
+        private static final long serialVersionUID = 1L;
+
+        private MixinEnvironment.Phase blockedPhase;
+
+        @Override
+        public boolean add(Config config) {
+            if (!super.add(config)) {
+                return false;
+            }
+            this.blockedPhase = null;
+            return true;
+        }
     }
 
     /**
