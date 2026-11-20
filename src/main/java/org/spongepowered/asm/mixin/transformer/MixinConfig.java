@@ -31,6 +31,7 @@ import java.lang.reflect.Constructor;
 import java.net.JarURLConnection;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -1440,11 +1441,12 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
                     throw new IOException("Mixin config cannot be found, getResource and getResourceAsStream implementations are possibly inconsistent");
                 }
                 if (!"jar".equals(resource.getProtocol())) {
-                    throw new IOException("Mixin config does not reside in a jar file");
+                    service.getLogger("CleanMix").debug("Mixin config {} does not reside in a jar file, it has no source", configFile);
+                    return null;
                 }
                 JarURLConnection conn = (JarURLConnection) resource.openConnection();
                 return new ContainerHandlePath(Paths.get(conn.getJarFileURL().toURI()));
-            } catch (IOException | URISyntaxException e) {
+            } catch (IOException | URISyntaxException | FileSystemNotFoundException | IllegalArgumentException e) {
                 service.getLogger("CleanMix").warn("Unable to locate resource for mixin config source: {}", configFile, e);
                 return null;
             }
