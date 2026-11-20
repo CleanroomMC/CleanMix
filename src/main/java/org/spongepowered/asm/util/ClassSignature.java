@@ -172,7 +172,7 @@ public class ClassSignature {
          * @param array arrayness flag
          * @return this token
          */
-        public abstract IToken setArray(boolean array);
+        public abstract IToken setArray(int array);
         
         /**
          * Set the wildcard on this token, only accepted if one of the valid
@@ -205,9 +205,9 @@ public class ClassSignature {
         private final boolean inner;
         
         /**
-         * True if this token represents an array type
+         * Array depth of this token
          */
-        private boolean array;
+        private int array;
         
         /**
          * Symbol (wildcard, unbound or base type)
@@ -222,12 +222,12 @@ public class ClassSignature {
         /**
          * Class bounds on this token, null if no bounds have been set
          */
-        private List<Token> classBound;
+        private List<IToken> classBound;
         
         /**
          * Interface bounds on this token, null if no bounds have been set
          */
-        private List<Token> ifaceBound;
+        private List<IToken> ifaceBound;
         
         /**
          * Generic signature components on this token, null if this is a raw
@@ -292,8 +292,8 @@ public class ClassSignature {
         }
         
         @Override
-        public IToken setArray(boolean array) {
-            this.array |= array;
+        public IToken setArray(int array) {
+            this.array = array;
             return this;
         }
         
@@ -305,16 +305,16 @@ public class ClassSignature {
             return this.setSymbol(wildcard);
         }
         
-        private List<Token> getClassBound() {
+        private List<IToken> getClassBound() {
             if (this.classBound == null) {
-                this.classBound = new ArrayList<Token>();
+                this.classBound = new ArrayList<IToken>();
             }
             return this.classBound;
         }
         
-        private List<Token> getIfaceBound() {
+        private List<IToken> getIfaceBound() {
             if (this.ifaceBound == null) {
-                this.ifaceBound = new ArrayList<Token>();
+                this.ifaceBound = new ArrayList<IToken>();
             }
             return this.ifaceBound;
         }
@@ -436,6 +436,24 @@ public class ClassSignature {
             return token;
         }
 
+        Token addBound(TokenHandle token, boolean classBound) {
+            if (classBound) {
+                return this.addClassBound(token);
+            }
+            
+            return this.addInterfaceBound(token);
+        }
+
+        Token addClassBound(TokenHandle token) {
+            this.getClassBound().add(token);
+            return token.asToken();
+        }
+
+        Token addInterfaceBound(TokenHandle token) {
+            this.getIfaceBound().add(token);
+            return token.asToken();
+        }
+
         /**
          * Add an inner class suffix to this symbol
          * 
@@ -468,13 +486,13 @@ public class ClassSignature {
             }
             
             if (this.classBound != null) {
-                for (Token token : this.classBound) {
+                for (IToken token : this.classBound) {
                     sb.append(token.asType());
                 }
             }
             
             if (this.ifaceBound != null) {
-                for (Token token : this.ifaceBound) {
+                for (IToken token : this.ifaceBound) {
                     sb.append(':').append(token.asType());
                 }
             }
@@ -500,7 +518,7 @@ public class ClassSignature {
         public String asType(boolean raw) {
             StringBuilder sb = new StringBuilder();
             
-            if (this.array) {
+            for (int i = this.array; i > 0; i--) {
                 sb.append('[');
             }
             
@@ -570,9 +588,9 @@ public class ClassSignature {
         final Token token;
         
         /**
-         * True if this handle is an array type
+         * Array depth of this handle
          */
-        boolean array;
+        int array;
         
         /**
          * Wildcard for this handle
@@ -589,11 +607,11 @@ public class ClassSignature {
         
         /* (non-Javadoc)
          * @see org.spongepowered.asm.util.ClassSignature.IToken
-         *      #setArray(boolean)
+         *      #setArray(int)
          */
         @Override
-        public IToken setArray(boolean array) {
-            this.array |= array;
+        public IToken setArray(int array) {
+            this.array = array;
             return this;
         }
 
@@ -628,7 +646,7 @@ public class ClassSignature {
                 sb.append(this.wildcard);
             }
             
-            if (this.array) {
+            for (int i = this.array; i > 0; i--) {
                 sb.append('[');
             }
             
@@ -691,9 +709,9 @@ public class ClassSignature {
             protected Token token;
             
             /**
-             * True if the next element to be appended is an array element
+             * Array depth of the next element to be appended
              */
-            private boolean array;
+            private int array;
     
             public Token getToken() {
                 if (this.token == null) {
@@ -703,12 +721,12 @@ public class ClassSignature {
             }
             
             protected void setArray() {
-                this.array = true;
+                this.array++;
             }
     
-            private boolean getArray() {
-                boolean array = this.array;
-                this.array = false;
+            private int getArray() {
+                int array = this.array;
+                this.array = 0;
                 return array;
             }
             
@@ -778,7 +796,7 @@ public class ClassSignature {
             private final TokenHandle handle;
             
             FormalParamElement(String param) {
-                this.handle = ClassSignature.this.getType(param);
+                this.handle = ClassSignature.this.getType(param, true);
                 this.token = this.handle.asToken();
             }
             
@@ -817,7 +835,7 @@ public class ClassSignature {
             
             @Override
             public void visitTypeVariable(String name) {
-                TokenHandle token = ClassSignature.this.getType(name);
+                TokenHandle token = ClassSignature.this.getType(name, false);
                 this.token = this.type.addTypeArgument(token).setWildcard(this.wildcard).asToken();
             }
             
@@ -862,6 +880,12 @@ public class ClassSignature {
                 this.classBound = classBound;
             }
             
+            @Override
+            public void visitTypeVariable(String name) {
+                TokenHandle token = ClassSignature.this.getType(name, false);
+                this.token = this.type.token.addBound(token, this.classBound);
+            }
+
             @Override
             public void visitClassType(String name) {
                 this.token = this.type.token.addBound(name, this.classBound);
@@ -1029,12 +1053,20 @@ public class ClassSignature {
      * Get the token for the specified type var name, creating it if necessary
      * 
      * @param varName type var to lookup
+     * @param forDeclaration if the token is declared rather than just used
      * @return type token for the supplied type var name
      */
-    protected TokenHandle getType(String varName) {
+    protected TokenHandle getType(String varName, boolean forDeclaration) {
         for (TypeVar typeVar : this.types.keySet()) {
             if (typeVar.matches(varName)) {
-                return this.types.get(typeVar);
+                TokenHandle handle;
+                if (forDeclaration) {
+                    handle = this.types.remove(typeVar);
+                    this.types.put(typeVar, handle); //Move to the end
+                } else {
+                    handle = this.types.get(typeVar);
+                }
+                return handle;
             }
         }
         
