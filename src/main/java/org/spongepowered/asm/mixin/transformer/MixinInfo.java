@@ -1063,7 +1063,8 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
             if (declaredTarget == null) {
                 continue;
             }
-            if (tracker != null && tracker.isClassLoaded(declaredTarget.name) && !this.isReloading()) {
+            if (tracker != null && tracker.isClassLoaded(declaredTarget.name) && !this.isReloading()
+                    && MixinEdits.shouldApply(this.className, declaredTarget.name)) {
                 String message = String.format("Critical problem: %s target %s was loaded too early.", this, declaredTarget.name);
                 if (this.parent.isRequired()) {
                     throw new MixinTargetAlreadyLoadedException(this, message, declaredTarget.name);
@@ -1134,6 +1135,9 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
     private List<ClassInfo> readTargetClasses(List<DeclaredTarget> declaredTargets) throws InvalidMixinException {
         List<ClassInfo> targetClasses = new ArrayList<ClassInfo>();
         for (DeclaredTarget target : declaredTargets) {
+            if (!MixinEdits.shouldApply(this.className, target.name)) {
+                continue;
+            }
             ClassInfo targetClass = this.getTargetClass(target);
             if (targetClass != null) {
                 targetClasses.add(targetClass);
