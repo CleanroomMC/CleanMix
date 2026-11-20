@@ -26,6 +26,7 @@ package org.spongepowered.asm.mixin.transformer;
 
 import java.text.DecimalFormat;
 import java.util.*;
+import java.util.function.Consumer;
 
 import org.spongepowered.asm.logging.Level;
 import org.spongepowered.asm.logging.ILogger;
@@ -205,6 +206,8 @@ public class MixinProcessor {
      * Handling an error state, do not process further mixins
      */
     private boolean errorState = false;
+
+    private boolean reapplyingMixins;
 
     /**
      * Guard against recursive config preparation
@@ -466,14 +469,31 @@ public class MixinProcessor {
      * @return List of classes that need to be updated
      */
     public List<String> reload(String mixinClass, ClassNode classNode) {
+        return this.reload(mixinClass, classNode, null);
+    }
+
+    synchronized List<String> reload(String mixinClass, ClassNode classNode, Consumer<List<String>> reapplyTargets) {
         if (this.lock.getDepth() > 0) {
             throw new MixinApplyError("Cannot reload mixin if re-entrant lock entered");
         }
-        List<String> targets = new ArrayList<String>();
-        for (MixinConfig config : this.configs) {
-            targets.addAll(config.reloadMixin(mixinClass, classNode));
+        if (this.reapplyingMixins) {
+            throw new MixinApplyError("Cannot reload a mixin while reapplying another");
         }
-        return targets;
+        this.reapplyingMixins = reapplyTargets != null;
+        try {
+            for (MixinConfig config : this.configs) {
+                List<String> targets = config.reloadMixin(mixinClass, classNode, reapplyTargets);
+                if (targets != null) {
+                    return new ArrayList<>(targets);
+                }
+            }
+            if (reapplyTargets != null) {
+                throw new MixinApplyError("Cannot reload unknown mixin " + mixinClass);
+            }
+            return new ArrayList<>();
+        } finally {
+            this.reapplyingMixins = false;
+        }
     }
 
     public synchronized void refresh() {
@@ -674,6 +694,9 @@ public class MixinProcessor {
     }
     
     private void handleMixinApplyError(String targetClass, InvalidMixinException ex, MixinEnvironment environment) throws MixinApplyError {
+        if (this.reapplyingMixins) {
+            throw new MixinApplyError("Error reapplying mixins to " + targetClass, ex);
+        }
         this.handleMixinError(targetClass, ex, environment, ErrorPhase.APPLY);
     }
 

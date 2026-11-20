@@ -25,6 +25,7 @@
 package org.spongepowered.asm.mixin.transformer;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.MixinEnvironment;
@@ -51,6 +52,20 @@ public interface IMixinTransformer {
      * @return List of classes that need to be updated
      */
     public abstract List<String> reload(String mixinClass, ClassNode classNode);
+
+    /**
+     * Update a mixin and reapply it to live targets.
+     *
+     * @param mixinClass Name of the mixin
+     * @param classNode New bytecode
+     * @param reapplyTargets Callback to update the affected targets
+     * @return List of affected classes
+     */
+    public default List<String> reload(String mixinClass, ClassNode classNode, Consumer<List<String>> reapplyTargets) {
+        List<String> targets = this.reload(mixinClass, classNode);
+        reapplyTargets.accept(targets);
+        return targets;
+    }
 
     /**
      * Called when the transformation reason is computing_frames. The only

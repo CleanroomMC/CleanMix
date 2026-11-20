@@ -26,6 +26,7 @@ package org.spongepowered.asm.mixin.transformer;
 
 import java.lang.reflect.Constructor;
 import java.util.List;
+import java.util.function.Consumer;
 
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.launch.MixinInitialisationError;
@@ -181,7 +182,12 @@ public final class MixinTransformer extends TreeTransformer implements IMixinTra
      */
     @Override
     public List<String> reload(String mixinClass, ClassNode classNode) {
-        return this.processor.reload(mixinClass, classNode);
+        return this.reload(mixinClass, classNode, null);
+    }
+
+    @Override
+    public synchronized List<String> reload(String mixinClass, ClassNode classNode, Consumer<List<String>> reapplyTargets) {
+        return this.processor.reload(mixinClass, classNode, reapplyTargets);
     }
 
     /* (non-Javadoc)

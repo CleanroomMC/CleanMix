@@ -33,6 +33,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import org.spongepowered.asm.logging.Level;
 import org.spongepowered.asm.logging.ILogger;
@@ -485,15 +486,9 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
      * State use when hotswap reloading a mixin
      */
     class Reloaded extends State {
-        
-        /**
-         * The previous validation state to compare the changes to
-         */
-        private final State previous;
 
-        Reloaded(State previous, ClassNode classNode) {
-            super(classNode, previous.getClassInfo());
-            this.previous = previous;
+        Reloaded(ClassNode classNode) {
+            super(classNode, MixinInfo.this.info);
         }
 
         /**
@@ -502,13 +497,14 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
          */
         @Override
         protected void validateChanges(SubType type, List<ClassInfo> targetClasses) {
-            if (!this.syntheticInnerClasses.equals(this.previous.syntheticInnerClasses)) {
+            State previous = MixinInfo.this.state;
+            if (!this.syntheticInnerClasses.equals(previous.syntheticInnerClasses)) {
                 throw new MixinReloadException(MixinInfo.this, "Cannot change inner classes");
             }
-            if (!this.interfaces.equals(this.previous.interfaces)) {
+            if (!this.interfaces.equals(previous.interfaces)) {
                 throw new MixinReloadException(MixinInfo.this, "Cannot change interfaces");
             }
-            if (!new HashSet<InterfaceInfo>(this.softImplements).equals(new HashSet<InterfaceInfo>(this.previous.softImplements))) {
+            if (!new HashSet<InterfaceInfo>(this.softImplements).equals(new HashSet<InterfaceInfo>(previous.softImplements))) {
                 throw new MixinReloadException(MixinInfo.this, "Cannot change soft interfaces");
             }
             List<ClassInfo> targets = MixinInfo.this.readTargetClasses(this.validationClassNode, true);
@@ -988,6 +984,9 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
     void parseTargets() {
         try {
             this.targetClasses.addAll(this.readTargetClasses(this.declaredTargets));
+            for (ClassInfo targetClass : this.targetClasses) {
+                targetClass.addMixin(this);
+            }
             this.targetClassNames.clear();
             this.targetClassNames.addAll(Lists.transform(this.targetClasses, Functions.toStringFunction()));
         } catch (InvalidMixinException ex) {
@@ -1165,7 +1164,6 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
             ClassInfo targetClass = this.getTargetClass(target);
             if (targetClass != null) {
                 targetClasses.add(targetClass);
-                targetClass.addMixin(this);
             }
         }
         return targetClasses;
@@ -1483,13 +1481,28 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
      * Updates this mixin with new bytecode
      *
      * @param classNode New bytecode
+     * @param reapplyTargets Callback to update live targets, or null
      */
-    void reloadMixin(ClassNode classNode) {
+    void reloadMixin(ClassNode classNode, Consumer<List<String>> reapplyTargets) {
         if (this.pendingState != null) {
             throw new IllegalStateException("Cannot reload mixin while it is initialising");
         }
-        this.pendingState = new Reloaded(this.state, classNode);
-        this.validate();
+        State previous = this.state;
+        boolean detached = this.type.detached;
+        this.pendingState = new Reloaded(classNode);
+        try {
+            this.pendingState.validate(this.type, this.targetClasses);
+            this.state = this.pendingState;
+            if (reapplyTargets != null) {
+                reapplyTargets.accept(this.getTargetClasses());
+            }
+        } catch (RuntimeException | Error ex) {
+            this.state = previous;
+            this.type.detached = detached;
+            throw ex;
+        } finally {
+            this.pendingState = null;
+        }
     }
 
     /* (non-Javadoc)

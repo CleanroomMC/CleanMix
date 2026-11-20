@@ -34,6 +34,7 @@ import java.net.URL;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -1372,14 +1373,19 @@ final class MixinConfig implements Comparable<MixinConfig>, IMixinConfig {
      * @return List of classes that need to be updated
      */
     public List<String> reloadMixin(String mixinClass, ClassNode classNode) {
+        List<String> targets = this.reloadMixin(mixinClass, classNode, null);
+        return targets != null ? targets : Collections.<String>emptyList();
+    }
+
+    List<String> reloadMixin(String mixinClass, ClassNode classNode, Consumer<List<String>> reapplyTargets) {
         for (Iterator<MixinInfo> iter = this.mixins.iterator(); iter.hasNext();) {
             MixinInfo mixin = iter.next();
             if (mixin.getClassName().equals(mixinClass)) {
-                mixin.reloadMixin(classNode);
+                mixin.reloadMixin(classNode, reapplyTargets);
                 return mixin.getTargetClasses();
             }
         }
-        return Collections.<String>emptyList();
+        return null;
     }
     
     @Override

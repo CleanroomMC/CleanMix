@@ -28,13 +28,17 @@ import java.lang.instrument.ClassDefinition;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.IllegalClassFormatException;
 import java.lang.instrument.Instrumentation;
+import java.lang.instrument.UnmodifiableClassException;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.spongepowered.asm.logging.Level;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.ClassNode;
+import org.spongepowered.asm.mixin.throwables.MixinApplyError;
 import org.spongepowered.asm.mixin.transformer.IMixinTransformer;
 import org.spongepowered.asm.mixin.transformer.ext.IHotSwap;
 import org.spongepowered.asm.mixin.transformer.throwables.MixinReloadException;
@@ -69,8 +73,7 @@ public class MixinAgent implements IHotSwap {
                 ClassReader cr = new MixinClassReader(classfileBuffer, className);
                 cr.accept(classNode, ClassReader.EXPAND_FRAMES);
                 
-                List<String> targets = this.reloadMixin(className, classNode);
-                if (targets == null || !this.reApplyMixins(targets)) {
+                if (!this.reloadMixin(className, classNode)) {
                     return MixinAgent.ERROR_BYTECODE;
                 }
                 return mixinBytecode;
@@ -85,47 +88,61 @@ public class MixinAgent implements IHotSwap {
             }
         }
 
-        private List<String> reloadMixin(String className, ClassNode classNode) {
+        private boolean reloadMixin(String className, ClassNode classNode) {
             MixinAgent.log(Level.INFO, "Redefining mixin {}", className);
             try {
-                return MixinAgent.this.classTransformer.reload(className.replace('/', '.'), classNode);
+                MixinAgent.this.classTransformer.reload(className.replace('/', '.'), classNode, this::reApplyMixins);
+                return true;
             } catch (MixinReloadException e) {
                 MixinAgent.log(Level.ERROR, "Mixin {} cannot be reloaded, needs a restart to be applied: {} ", e.getMixinInfo(), e.getMessage());
             } catch (Throwable th) {
                 // catch everything as otherwise it is ignored
-                MixinAgent.log(Level.ERROR, "Error while finding targets for mixin {}", className, th);
+                MixinAgent.log(Level.ERROR, "Error while reloading mixin {}", className, th);
             }
-            return null;
+            return false;
         }
 
         /**
-         * Re-apply all mixins to the supplied list of target classes.
+         * Re-apply mixins to the targets that have already been loaded.
          * 
          * @param targets Target classes to re-transform
-         * @return true if all targets were transformed, false if transformation
-         *          failed
          */
-        private boolean reApplyMixins(List<String> targets) {
+        private void reApplyMixins(List<String> targets) {
             IMixinService service = MixinService.getService();
-            
+            Set<String> loadedClasses = new HashSet<>();
+            for (Class<?> loadedClass : MixinAgent.instrumentation.getAllLoadedClasses()) {
+                loadedClasses.add(loadedClass.getName());
+            }
+
+            List<ClassDefinition> definitions = new ArrayList<>();
             for (String target : targets) {
                 String targetName = target.replace('/', '.');
-                MixinAgent.log(Level.DEBUG, "Re-transforming target class {}", target);
+                if (!loadedClasses.remove(targetName)) {
+                    continue;
+                }
+                byte[] targetBytecode = MixinAgent.classLoader.getOriginalTargetBytecode(targetName);
+                if (targetBytecode == null) {
+                    MixinAgent.log(Level.WARN, "Skipping loaded target class {} because its original bytecode is not registered", targetName);
+                    continue;
+                }
+
+                MixinAgent.log(Level.DEBUG, "Re-transforming target class {}", targetName);
                 try {
-                    Class<?> targetClass = service.getClassProvider().findClass(targetName);
-                    byte[] targetBytecode = MixinAgent.classLoader.getOriginalTargetBytecode(targetName);
-                    if (targetBytecode == null) {
-                        MixinAgent.log(Level.ERROR, "Target class {} bytecode is not registered", targetName);
-                        return false;
-                    }
+                    Class<?> targetClass = service.getClassProvider().findClass(targetName, false);
                     targetBytecode = MixinAgent.this.classTransformer.transformClassBytes(null, targetName, targetBytecode);
-                    MixinAgent.instrumentation.redefineClasses(new ClassDefinition(targetClass, targetBytecode));
-                } catch (Throwable th) {
-                    MixinAgent.log(Level.ERROR, "Error while re-transforming target class {}", target, th);
-                    return false;
+                    definitions.add(new ClassDefinition(targetClass, targetBytecode));
+                } catch (ClassNotFoundException ex) {
+                    throw new MixinApplyError("Could not find loaded target class " + targetName, ex);
                 }
             }
-            return true;
+
+            if (!definitions.isEmpty()) {
+                try {
+                    MixinAgent.instrumentation.redefineClasses(definitions.toArray(new ClassDefinition[0]));
+                } catch (ClassNotFoundException | UnmodifiableClassException ex) {
+                    throw new MixinApplyError("Could not redefine mixin target classes", ex);
+                }
+            }
         }
     }
 
