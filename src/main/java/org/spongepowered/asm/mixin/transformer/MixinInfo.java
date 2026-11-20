@@ -900,6 +900,11 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
     private final transient boolean strict;
 
     /**
+     * Set once this mixin has been removed from its config
+     */
+    private transient boolean discarded;
+
+    /**
      * Should the assigned plugin be queried for this mixin's application?
      */
     private final boolean ignorePlugin;
@@ -1009,14 +1014,20 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
     }
 
     /**
-     * Run validation pass
+     * Run validation pass. A mixin which fails validation, or whose listeners
+     * fail, is removed from its config and reports false from then on.
+     *
+     * @return true if the mixin can be applied
      */
-    void validate() {
+    boolean validate() {
+        if (this.discarded) {
+            return false;
+        }
         if (this.state != null) {
-            return;
+            return true;
         }
         if (this.pendingState == null) {
-            throw new InvalidMixinException(this, "Mixin was discarded after failing validation earlier");
+            throw new IllegalStateException("No pending validation state for " + this);
         }
         try {
             this.parseTargets();
@@ -1028,17 +1039,24 @@ class MixinInfo implements Comparable<MixinInfo>, IMixinInfo {
                 }
             } catch (Exception e) {
                 this.logger.error(e instanceof InvalidMixinException ? ((InvalidMixinException) e).getMixin() + ": " + e.getMessage() : e.getMessage(), e);
-                this.parent.removeMixin(this);
+                this.discard();
+                return false;
             }
+            return true;
         } catch (InvalidMixinException ex) {
-            this.parent.removeMixin(this);
+            this.discard();
             throw ex;
         } catch (RuntimeException ex) {
-            this.parent.removeMixin(this);
+            this.discard();
             throw new InvalidMixinException(this, ex);
         } finally {
             this.pendingState = null;
         }
+    }
+
+    private void discard() {
+        this.discarded = true;
+        this.parent.removeMixin(this);
     }
 
     void validateInnerClass(ClassNode innerClass) {

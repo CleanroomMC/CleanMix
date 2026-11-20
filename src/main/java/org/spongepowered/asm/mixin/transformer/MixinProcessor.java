@@ -288,8 +288,9 @@ public class MixinProcessor {
                     for (MixinInfo mixin : new ArrayList<MixinInfo>(config.getMixinsFor(name))) {
                         if (mixin.shouldApplyMixin(name)) {
                             try {
-                                mixin.validate();
-                                mixins.add(mixin);
+                                if (mixin.validate()) {
+                                    mixins.add(mixin);
+                                }
                             } catch (InvalidMixinException ex) {
                                 this.handleMixinApplyError(name, ex, environment);
                             }

@@ -162,7 +162,9 @@ class MixinCoprocessorAccessor extends MixinCoprocessor {
         }
 
         try {
-            mixin.validate();
+            if (!mixin.validate()) {
+                return null;
+            }
         } catch (InvalidMixinException ex) {
             if (mixin.isRequired()) {
                 throw ex;
