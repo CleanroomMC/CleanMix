@@ -81,7 +81,10 @@ public enum MixinInheritanceTracker implements IListener {
             return;
         }
         this.registrations++;
-        this.link(mixin);
+        String unresolved = this.link(mixin, mixin.getClassInfo().getSuperName());
+        if (unresolved != null) {
+            this.pending.put(mixin, unresolved);
+        }
     }
 
     /**
@@ -101,11 +104,18 @@ public enum MixinInheritanceTracker implements IListener {
         }
         this.lateRegistrations = this.registrations;
         this.lastUpgrade = upgrades;
-        List<MixinInfo> retry = new ArrayList<MixinInfo>(this.pending);
-        this.pending.clear();
-        for (MixinInfo mixin : retry) {
-            this.unlink(mixin);
-            this.link(mixin);
+        for (Iterator<Map.Entry<MixinInfo, String>> iter = this.pending.entrySet().iterator(); iter.hasNext();) {
+            Map.Entry<MixinInfo, String> entry = iter.next();
+            ClassInfo parent = ClassInfo.fromCache(entry.getValue());
+            if (parent == null || !parent.isMixin()) {
+                continue;
+            }
+            String unresolved = this.link(entry.getKey(), entry.getValue());
+            if (unresolved == null) {
+                iter.remove();
+            } else {
+                entry.setValue(unresolved);
+            }
         }
     }
 
@@ -123,16 +133,11 @@ public enum MixinInheritanceTracker implements IListener {
         this.unlink(mixin);
     }
 
-    private void link(MixinInfo mixin) {
-        ClassInfo mixinInfo = mixin.getClassInfo();
-        assert mixinInfo.isMixin(); //  The mixin should certainly be a mixin
-
-        String superName = mixinInfo.getSuperName();
+    private String link(MixinInfo mixin, String superName) {
         while (superName != null && !MixinInheritanceTracker.OBJECT.equals(superName)) {
             ClassInfo superType = ClassInfo.fromCache(superName);
             if (superType == null || !superType.isMixin()) {
-                this.pending.add(mixin);
-                return;
+                return superName;
             }
             List<MixinInfo> children = parentMixins.get(superType.getName());
             if (children == null) {
@@ -141,6 +146,7 @@ public enum MixinInheritanceTracker implements IListener {
             children.add(mixin);
             superName = superType.getSuperName();
         }
+        return null;
     }
 
     private void unlink(MixinInfo mixin) {
@@ -209,7 +215,7 @@ public enum MixinInheritanceTracker implements IListener {
      *
      * @see #retryPending
      */
-    private final Set<MixinInfo> pending = Collections.newSetFromMap(new IdentityHashMap<MixinInfo, Boolean>());
+    private final Map<MixinInfo, String> pending = new IdentityHashMap<>();
 
     private int registrations;
 
