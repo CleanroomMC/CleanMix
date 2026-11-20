@@ -29,6 +29,7 @@ import org.spongepowered.asm.mixin.MixinEnvironment;
 import java.net.URI;
 import java.net.URL;
 import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 
 /**
  * CleanMix extension methods for IMixinService instances
@@ -61,5 +62,17 @@ public interface ICleanMixinService {
      * @param transitioner method that consumes phases to transition environments
      */
     void acceptPhaseTransitioner(Consumer<MixinEnvironment.Phase> transitioner);
+
+    /**
+     * Get the interner CleanMix passes long-lived, heavily duplicated strings
+     * from the specified source through. Called once per source, the result
+     * is kept and must be thread-safe. The default does not intern.
+     *
+     * @param source part of CleanMix the strings come from
+     * @return function returning a pooled instance equal to its argument
+     */
+    default UnaryOperator<String> getStringInterner(InternSource source) {
+        return UnaryOperator.identity();
+    }
 
 }

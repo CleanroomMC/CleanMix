@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.UnaryOperator;
 
 import org.spongepowered.asm.logging.Level;
 import org.spongepowered.asm.logging.ILogger;
@@ -61,6 +62,8 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 import org.spongepowered.asm.mixin.transformer.ClassInfo.Member.Type;
 import org.spongepowered.asm.mixin.transformer.MixinInfo.MixinClassNode;
 import org.spongepowered.asm.service.MixinService;
+import org.spongepowered.asm.service.clean.ICleanMixinService;
+import org.spongepowered.asm.service.clean.InternSource;
 import org.spongepowered.asm.util.Annotations;
 import org.spongepowered.asm.util.Bytecode;
 import org.spongepowered.asm.util.ClassSignature;
@@ -348,11 +351,11 @@ public final class ClassInfo {
 
         protected Member(Type type, String name, String desc, int access, boolean injected) {
             this.type = type;
-            this.memberName = name;
-            this.memberDesc = desc;
+            this.memberName = ClassInfo.interner.apply(name);
+            this.memberDesc = ClassInfo.interner.apply(desc);
             this.isInjected = injected;
-            this.currentName = name;
-            this.currentDesc = desc;
+            this.currentName = this.memberName;
+            this.currentDesc = this.memberDesc;
             this.modifiers = access;
         }
 
@@ -677,6 +680,13 @@ public final class ClassInfo {
     
     private static final Profiler profiler = Profiler.getProfiler("meta");
 
+    /**
+     * Must be initialised before {@link #OBJECT}, whose members intern their names
+     */
+    private static final UnaryOperator<String> interner = MixinService.getService() instanceof ICleanMixinService
+            ? ((ICleanMixinService) MixinService.getService()).getStringInterner(InternSource.CLASS_INFO)
+            : UnaryOperator.<String>identity();
+
     private static final String JAVA_LANG_OBJECT = "java/lang/Object";
 
     /**
@@ -851,8 +861,8 @@ public final class ClassInfo {
     private ClassInfo(ClassNode classNode) {
         Section timer = ClassInfo.profiler.begin(Profiler.ROOT, "class.meta");
         try {
-            this.name = classNode.name;
-            this.superName = classNode.superName != null ? classNode.superName : ClassInfo.JAVA_LANG_OBJECT;
+            this.name = ClassInfo.interner.apply(classNode.name);
+            this.superName = classNode.superName != null ? ClassInfo.interner.apply(classNode.superName) : ClassInfo.JAVA_LANG_OBJECT;
             this.initialisers = new HashSet<Method>();
             this.methods = new HashSet<Method>();
             this.fields = new HashSet<Field>();
@@ -862,7 +872,9 @@ public final class ClassInfo {
             this.mixin = this.isMixin ? ((MixinClassNode)classNode).getMixin() : null;
             this.mixins = this.isMixin ? Collections.<MixinInfo>emptySet() : new HashSet<MixinInfo>();
 
-            this.interfaces.addAll(classNode.interfaces);
+            for (String iface : classNode.interfaces) {
+                this.interfaces.add(ClassInfo.interner.apply(iface));
+            }
 
             for (MethodNode method : classNode.methods) {
                 this.addMethod(method, this.isMixin);
@@ -903,7 +915,7 @@ public final class ClassInfo {
             
             this.access = access;
             this.isInner = isInner;
-            this.outerName = outerName;
+            this.outerName = outerName != null ? ClassInfo.interner.apply(outerName) : null;
 
             if (MixinEnvironment.getCompatibilityLevel().supports(LanguageFeatures.NESTING)) {
                 this.nestHost = ClassNodeAdapter.getNestHostClass(classNode);
