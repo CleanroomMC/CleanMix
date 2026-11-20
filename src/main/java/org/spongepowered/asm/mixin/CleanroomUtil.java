@@ -38,6 +38,7 @@ import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.WeakHashMap;
 
 import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.MethodNode;
@@ -84,6 +85,7 @@ public final class CleanroomUtil {
     public static final int COMPATIBILITY_LATEST = COMPATIBILITY_0_8_0;
 
     private static final Map<String, Integer> EMPTY_COMPATIBILITIES = Collections.<String, Integer>emptyMap();
+    private static final Map<IMixinInfo, Map<String, Integer>> MIXIN_COMPATIBILITIES = new WeakHashMap<>();
     private static final Map<String, Map<String, Integer>> COMPATIBILITIES_CACHE = new HashMap<String, Map<String, Integer>>();
 
     /**
@@ -205,7 +207,11 @@ public final class CleanroomUtil {
         return compatibility != null ? compatibility : COMPATIBILITY_OLD;
     }
 
-    private static Map<String, Integer> getCompatibilities(IMixinInfo mixin) {
+    private static synchronized Map<String, Integer> getCompatibilities(IMixinInfo mixin) {
+        return MIXIN_COMPATIBILITIES.computeIfAbsent(mixin, CleanroomUtil::loadCompatibilities);
+    }
+
+    private static Map<String, Integer> loadCompatibilities(IMixinInfo mixin) {
         URL metadataResource = findCompatibilityResource(mixin.getConfig().getSource());
         if (metadataResource == null) {
             metadataResource = findCompatibilityResource(mixin.getClassName());
