@@ -604,6 +604,7 @@ public class MixinProcessor {
             } catch (Exception ex) {
                 String message = ex.getMessage();
                 MixinProcessor.logger.error("Error encountered whilst initialising mixin config '" + config.getName() + "' from mod '" + CleanroomUtil.getModId(config) + "': " + message, ex);
+                failed.add(config);
             }
         }
         batch.removeAll(failed);
@@ -637,6 +638,7 @@ public class MixinProcessor {
             } catch (Exception ex) {
                 String message = ex.getMessage();
                 MixinProcessor.logger.error("Error encountered during mixin config postInit step '" + config.getName() + "' from mod '" + CleanroomUtil.getModId(config) + "': " + message, ex);
+                failed.add(config);
             }
         }
         batch.removeAll(failed);
