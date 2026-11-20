@@ -31,11 +31,16 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import org.objectweb.asm.Type;
+import org.objectweb.asm.tree.AnnotationNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.MethodNode;
+import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.MixinEnvironment;
+import org.spongepowered.asm.obfuscation.RemapperChain;
 import org.spongepowered.asm.service.MixinService;
+import org.spongepowered.asm.util.Annotations;
 
 /**
  * Edits of one mixin, from {@link MixinEdits#of}. Each call adds to the
@@ -98,11 +103,19 @@ public final class MixinEdit implements IMixinEditor {
         String name = descStart < 0 ? method : method.substring(0, descStart);
         String desc = descStart < 0 ? null : method.substring(descStart);
         return this.edit(classNode -> {
-            String mapped = MixinEnvironment.getDefaultEnvironment().getRemappers().mapMethodName(null, name, desc);
+            RemapperChain remappers = MixinEnvironment.getDefaultEnvironment().getRemappers();
+            List<String> owners = MixinEdit.getOwners(classNode);
             boolean found = false;
             for (Iterator<MethodNode> iter = classNode.methods.iterator(); iter.hasNext();) {
                 MethodNode node = iter.next();
-                if ((node.name.equals(name) || node.name.equals(mapped)) && (desc == null || node.desc.equals(desc))) {
+                if (desc != null && !node.desc.equals(desc)) {
+                    continue;
+                }
+                boolean matches = node.name.equals(name);
+                for (int i = 0; !matches && i < owners.size(); i++) {
+                    matches = node.name.equals(remappers.mapMethodName(owners.get(i), name, node.desc));
+                }
+                if (matches) {
                     found = true;
                     MethodEdit methodEdit = new MethodEdit(node);
                     edit.accept(methodEdit);
@@ -129,11 +142,19 @@ public final class MixinEdit implements IMixinEditor {
         String name = descStart < 0 ? field : field.substring(0, descStart);
         String desc = descStart < 0 ? null : field.substring(descStart + 1);
         return this.edit(classNode -> {
-            String mapped = MixinEnvironment.getDefaultEnvironment().getRemappers().mapFieldName(null, name, desc);
+            RemapperChain remappers = MixinEnvironment.getDefaultEnvironment().getRemappers();
+            List<String> owners = MixinEdit.getOwners(classNode);
             boolean found = false;
             for (Iterator<FieldNode> iter = classNode.fields.iterator(); iter.hasNext();) {
                 FieldNode node = iter.next();
-                if ((node.name.equals(name) || node.name.equals(mapped)) && (desc == null || node.desc.equals(desc))) {
+                if (desc != null && !node.desc.equals(desc)) {
+                    continue;
+                }
+                boolean matches = node.name.equals(name);
+                for (int i = 0; !matches && i < owners.size(); i++) {
+                    matches = node.name.equals(remappers.mapFieldName(owners.get(i), name, node.desc));
+                }
+                if (matches) {
                     found = true;
                     FieldEdit fieldEdit = new FieldEdit(node);
                     edit.accept(fieldEdit);
@@ -184,6 +205,28 @@ public final class MixinEdit implements IMixinEditor {
     @Override
     public String toString() {
         return String.format("MixinEdits.of(%s, %d)", this.mixin, this.priority);
+    }
+
+    // Null ignores owners, valid targets serves owner-awares
+    private static List<String> getOwners(ClassNode mixin) {
+        List<String> owners = new ArrayList<String>();
+        owners.add(null);
+        AnnotationNode annotation = Annotations.getInvisible(mixin, Mixin.class);
+        if (annotation != null) {
+            List<Type> types = Annotations.getValue(annotation, "value");
+            if (types != null) {
+                for (Type type : types) {
+                    owners.add(type.getInternalName());
+                }
+            }
+            List<String> names = Annotations.getValue(annotation, "targets");
+            if (names != null) {
+                for (String name : names) {
+                    owners.add(name.replace('.', '/'));
+                }
+            }
+        }
+        return owners;
     }
 
     private void warnIfMissing(boolean found, String member) {
